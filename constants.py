@@ -1,0 +1,1 @@
+path_data = 'E:\\Serious\\WESAD_DATA\\WESAD\\'
