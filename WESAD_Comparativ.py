@@ -284,12 +284,14 @@ def extract_wrist_features_from_subject(subject_id):
 
     return df
 
-def prepare_global_dataset(all_ids):
+def prepare_global_dataset(all_ids, source = "chest"):
     all_data_frames = []
     print("\n--- START GLOBAL DATA EXTRACTION ---")
     for sub_id in all_ids:
-        df_sub = extract_features_from_subject(sub_id)
-        #df_sub = extract_wrist_features_from_subject(sub_id)
+        if source == "chest":
+            df_sub = extract_features_from_subject(sub_id)
+        else: # wrist data
+            df_sub = extract_wrist_features_from_subject(sub_id)
         if df_sub is not None:
             all_data_frames.append(df_sub)
 
@@ -301,13 +303,15 @@ def prepare_global_dataset(all_ids):
     return full_df
 
 
-def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y_pred_trans, classes):
-    fig, axes = plt.subplots(1, 3, figsize=(20, 5))
+def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y_pred_trans, y_pred_lstm, classes):
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle(f'Confusion Matrices for Subject {subject_id}', fontsize=16)
 
     #model_names = ['Random Forest', 'CNN', 'Transformer']
-    model_names = ['Random Forest', 'CNN', 'LSTM']
-    predictions = [y_pred_rf, y_pred_cnn, y_pred_trans]
+    model_names = ['Random Forest', 'CNN', 'Transformer', 'LSTM']
+    predictions = [y_pred_rf, y_pred_cnn, y_pred_trans, y_pred_lstm]
+
+    axes = axes.flatten()
 
     for i, ax in enumerate(axes):
         cm = confusion_matrix(y_true, predictions[i])
@@ -326,7 +330,7 @@ def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y
 # -------------------- Main --------------------
 
 # Data
-full_df = prepare_global_dataset(ALL_SUBJECTS)
+full_df = prepare_global_dataset(ALL_SUBJECTS, source='chest')
 
 # Labels
 le = LabelEncoder()
@@ -391,7 +395,7 @@ for sub_id in TEST_SUBJECTS:
         y_test_sub,
         res['y_pred_rf'],
         res['y_pred_cnn'],
-        #res['y_pred_trans'],
+        res['y_pred_trans'],
         res['y_pred_lstm'],
         class_names
     )
