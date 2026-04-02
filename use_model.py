@@ -1,4 +1,4 @@
-
+import lstm_model as lstm
 import cnn_model as cnn
 import transformer_model as transformer
 
@@ -55,12 +55,17 @@ def train_all_models_once(X_train, y_train, num_classes):
     trans_model.fit(train_dataset, epochs=20, verbose=0)
     #trans_model.fit(train_dataset, epochs=20, verbose=0, class_weight=class_weights_dict)
 
+    # Adăugăm antrenarea LSTM
+    print("  -> Training LSTM...")
+    lstm_m = lstm.build_lstm_model((X_train.shape[1], 1), num_classes)
+    lstm_m.fit(train_dataset, epochs=20, verbose=0)
+
     print("[INFO] Training complete.")
-    return rf_model, cnn_model, trans_model
+    return rf_model, cnn_model, trans_model, lstm_m
 
 def predict_on_test_data(models, X_test, y_test):
 
-    rf_model, cnn_model, trans_model = models
+    rf_model, cnn_model, trans_model, lstm_model = models
     BATCH_SIZE = 32
 
     # Random Forest
@@ -90,11 +95,21 @@ def predict_on_test_data(models, X_test, y_test):
         y_pred_trans = np.zeros_like(y_test)
         acc_trans = 0.0
 
+    probs_lstm = lstm_model.predict(test_dataset, verbose=0)
+    if len(probs_lstm) > 0:
+        y_pred_lstm = np.argmax(probs_lstm, axis=1)
+        acc_lstm = accuracy_score(y_test, y_pred_lstm)
+    else:
+        y_pred_lstm = np.zeros_like(y_test)
+        acc_lstm = 0.0
+
     return {
         'acc_rf': acc_rf,
         'acc_cnn': acc_cnn,
         'acc_transformer': acc_trans,
+        'acc_lstm': acc_lstm,
         'y_pred_rf': y_pred_rf,
         'y_pred_cnn': y_pred_cnn,
-        'y_pred_trans': y_pred_trans
+        'y_pred_trans': y_pred_trans,
+        'y_pred_lstm': y_pred_lstm
     }

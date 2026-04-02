@@ -45,6 +45,7 @@ DATA_PATH = cnst.path_data
 # Lista subiecti
 ALL_SUBJECTS = ['S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S13', 'S14', 'S15', 'S16', 'S17']
 TEST_SUBJECTS = ['S15', 'S16', 'S17']
+#TEST_SUBJECTS_2 = ['S11', 'S13', 'S14', 'S15', 'S16', 'S17']
 
 SAMPLING_RATE = 700
 WINDOW_SIZE_SEC = 120
@@ -155,11 +156,140 @@ def extract_features_from_subject(subject_id):
     return df
 
 
+def extract_wrist_features_from_subject(subject_id):
+    print(f"Loading and normalizing wrist data for {subject_id}...")
+    try:
+        with open(f"{DATA_PATH}{subject_id}/{subject_id}.pkl", 'rb') as f:
+            data = pickle.load(f, encoding='latin1')
+    except Exception as e:
+        print(f"Could not load data for {subject_id}: {e}")
+        return None
+
+    # Frecventele de esantionare (Sampling Rates) specifice bratarii Empatica E4 din WESAD
+    BVP_SR = 64
+    EDA_WRIST_SR = 4
+    LABEL_SR = 700  # Etichetele raman mereu la 700Hz in formatul original
+
+    # Extragem semnalele
+    bvp_signal = data['signal']['wrist']['BVP'].flatten()
+    eda_wrist_signal = data['signal']['wrist']['EDA'].flatten()
+    labels = data['label']
+
+    try:
+        # Procesam BVP ca semnal PPG
+        bvp_cleaned, info_bvp = nk.ppg_process(bvp_signal, sampling_rate=BVP_SR)
+        # Procesam EDA de la incheietura
+        eda_processed, _ = nk.eda_process(eda_wrist_signal, sampling_rate=EDA_WRIST_SR)
+    except Exception as e:
+        print(f"  Signal processing failed for {subject_id}: {e}")
+        return None
+
+    features_list = []
+
+    # Calculam durata totala in secunde bazat pe lungimea etichetelor
+    total_seconds = len(labels) // LABEL_SR
+
+    # Iteram prin ferestre bazandu-ne pe secunde pentru a sincroniza ratele de esantionare
+    for start_sec in range(0, total_seconds - WINDOW_SIZE_SEC, WINDOW_STEP_SEC):
+        end_sec = start_sec + WINDOW_SIZE_SEC
+
+        # 1. Extragem eticheta ferestrei (700 Hz)
+        start_label = start_sec * LABEL_SR
+        end_label = end_sec * LABEL_SR
+
+        if end_label > len(labels): break
+
+        window_labels = labels[start_label:end_label]
+        most_common_label = np.bincount(window_labels).argmax()
+
+        # 1=Baseline, 2=Stress, 3=Amusement
+        if most_common_label not in [1, 2, 3]:
+            continue
+
+        # 2. Decupam fereastra pentru BVP (64 Hz)
+        start_bvp = start_sec * BVP_SR
+        end_bvp = end_sec * BVP_SR
+        bvp_window = bvp_cleaned.iloc[start_bvp:end_bvp]
+
+        # 3. Decupam fereastra pentru EDA (4 Hz)
+        start_eda = start_sec * EDA_WRIST_SR
+        end_eda = end_sec * EDA_WRIST_SR
+        eda_window = eda_processed.iloc[start_eda:end_eda]
+
+        # Cautam varfurile in fereastra curenta BVP pentru calculul HRV
+        # Coloana generata de neurokit2 pentru varfuri PPG se numeste 'PPG_Peaks'
+        peaks_in_window = bvp_window[bvp_window['PPG_Peaks'] == 1].index
+
+        # Minim 3 batai de inima pentru a putea calcula HRV
+        if len(peaks_in_window) > 3:
+            try:
+                # --- A. Extragere Trasaturi BVP (HRV) ---
+                window_len_bvp = end_bvp - start_bvp
+                peaks_df = pd.DataFrame({"PPG_Peaks": np.zeros(window_len_bvp, dtype=bool)})
+
+                # Aliniem indicii varfurilor relativ la inceputul ferestrei
+                relative_peaks = peaks_in_window - start_bvp
+                valid_peaks = relative_peaks[(relative_peaks >= 0) & (relative_peaks < window_len_bvp)]
+                peaks_df.loc[valid_peaks, "PPG_Peaks"] = True
+
+                # Calculam HRV folosind varfurile PPG
+                hrv = nk.hrv(peaks_df, sampling_rate=BVP_SR, show=False)
+                hrv_numeric = hrv.select_dtypes(include=[np.number])
+                hrv_row = hrv_numeric.iloc[0].to_dict()
+
+                # --- B. Extragere Trasaturi EDA (Wrist) ---
+                eda_feats = {
+                    'EDA_Wrist_Mean': eda_window['EDA_Clean'].mean(),
+                    'EDA_Wrist_Std': eda_window['EDA_Clean'].std(),
+                    'EDA_Wrist_Tonic_Mean': eda_window['EDA_Tonic'].mean(),
+                    'EDA_Wrist_Phasic_Mean': eda_window['EDA_Phasic'].mean(),
+                    'EDA_Wrist_Phasic_Std': eda_window['EDA_Phasic'].std(),
+                    'EDA_Wrist_Min': eda_window['EDA_Clean'].min(),
+                    'EDA_Wrist_Max': eda_window['EDA_Clean'].max()
+                }
+
+                # Imbinam trasaturile
+                fused_row = {**hrv_row, **eda_feats}
+                fused_row["Label"] = most_common_label
+                fused_row["Subject"] = subject_id
+                features_list.append(fused_row)
+
+            except Exception:
+                continue  # Trecem peste fereastra daca apare o eroare la extragere
+
+    if not features_list:
+        return None
+
+    df = pd.DataFrame(features_list)
+
+    # --- Gestionarea valorilor invalide ---
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    df = df.fillna(df.median(numeric_only=True))
+    df = df.fillna(0)
+
+    # --- Normalizare per-subiect ---
+    feature_cols = [c for c in df.columns if c not in ['Label', 'Subject']]
+
+    if not feature_cols:
+        print(f"  Warning: No valid feature columns for {subject_id}")
+        return None
+
+    scaler = StandardScaler()
+    try:
+        df[feature_cols] = scaler.fit_transform(df[feature_cols])
+        df[feature_cols] = df[feature_cols].fillna(0)
+    except ValueError as e:
+        print(f"  Scaling error for {subject_id}: {e}")
+        return None
+
+    return df
+
 def prepare_global_dataset(all_ids):
     all_data_frames = []
     print("\n--- START GLOBAL DATA EXTRACTION ---")
     for sub_id in all_ids:
         df_sub = extract_features_from_subject(sub_id)
+        #df_sub = extract_wrist_features_from_subject(sub_id)
         if df_sub is not None:
             all_data_frames.append(df_sub)
 
@@ -175,7 +305,8 @@ def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y
     fig, axes = plt.subplots(1, 3, figsize=(20, 5))
     fig.suptitle(f'Confusion Matrices for Subject {subject_id}', fontsize=16)
 
-    model_names = ['Random Forest', 'CNN', 'Transformer']
+    #model_names = ['Random Forest', 'CNN', 'Transformer']
+    model_names = ['Random Forest', 'CNN', 'LSTM']
     predictions = [y_pred_rf, y_pred_cnn, y_pred_trans]
 
     for i, ax in enumerate(axes):
@@ -211,6 +342,12 @@ train_data_all = full_df[~full_df['Subject'].isin(TEST_SUBJECTS)].copy() #exclud
 X_train = train_data_all.drop(columns=["Label", "Subject"])
 y_train = train_data_all["Label"].values
 
+##
+#scaler = StandardScaler()
+#X_train_scaled = scaler.fit_transform(X_train)
+#X_train = pd.DataFrame(X_train_scaled, columns=X_train.columns)
+##
+
 print(f"Training Data Size: {len(X_train)} samples")
 
 trained_models = model.train_all_models_once(X_train, y_train, num_classes)
@@ -227,17 +364,24 @@ for sub_id in TEST_SUBJECTS:
     X_test_sub = sub_data.drop(columns=["Label", "Subject"])
     y_test_sub = sub_data["Label"].values
 
+    ##
+    #X_test_sub_scaled = scaler.transform(X_test_sub)
+    #X_test_sub = pd.DataFrame(X_test_sub_scaled, columns=X_test_sub.columns)
+    ##
+
     # Predictie
     res = model.predict_on_test_data(trained_models, X_test_sub, y_test_sub)
 
-    print(f"  Result {sub_id}: RF={res['acc_rf']:.2f}, CNN={res['acc_cnn']:.2f}, Transformer={res['acc_transformer']:.2f}")
+    print(f"X_Test: {X_test_sub}\nY_Test: {y_test_sub}")
+    print(f"  Result {sub_id}: RF={res['acc_rf']:.2f}, CNN={res['acc_cnn']:.2f}, Transformer={res['acc_transformer']:.2f}, LSTM={res['acc_lstm']:.2f}")
 
     # Construire lista rezultate
     results.append({
         'subject': sub_id,
         'acc_rf': res['acc_rf'],
         'acc_cnn': res['acc_cnn'],
-        'acc_transformer': res['acc_transformer']
+        'acc_transformer': res['acc_transformer'],
+        'acc_lstm': res['acc_lstm']
     })
 
     # --- AFISARE MATRICE DE CONFUZIE ---
@@ -247,7 +391,8 @@ for sub_id in TEST_SUBJECTS:
         y_test_sub,
         res['y_pred_rf'],
         res['y_pred_cnn'],
-        res['y_pred_trans'],
+        #res['y_pred_trans'],
+        res['y_pred_lstm'],
         class_names
     )
 
@@ -260,3 +405,4 @@ if not df_results.empty:
     print(f"RF: {df_results['acc_rf'].mean():.2f}")
     print(f"CNN: {df_results['acc_cnn'].mean():.2f}")
     print(f"Transformer: {df_results['acc_transformer'].mean():.2f}")
+    print(f"LSTM: {df_results['acc_lstm'].mean():.2f}")

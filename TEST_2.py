@@ -56,6 +56,13 @@ print(f"Labels: \n {data['label']}")
 ecg_signal = data['signal']['chest']['ECG']
 eda_signal = data['signal']['chest']['EDA']  # MODIFICARE: Preluare EDA
 
+print("\n")
+print("data keys: " + str(data.keys()))
+print("signal sources: " + str(data['signal'].keys()))
+print("wrist signals: " + str(data['signal']['wrist'].keys()))
+print("chest labels: " + str(data['signal']['chest'].keys()))
+print("\n")
+
 labels = data['label']
 unique_labels = set(labels)
 dict_labels = {0:0}
