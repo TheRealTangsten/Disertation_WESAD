@@ -1,3 +1,4 @@
 TEST*.py
 idei*
 ~$idei.rtf
+__pycache__/*
