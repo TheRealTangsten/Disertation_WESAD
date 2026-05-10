@@ -54,7 +54,7 @@ window_size_samples = WINDOW_SIZE_SEC * SAMPLING_RATE
 step_size_samples = WINDOW_STEP_SEC * SAMPLING_RATE
 
 def extract_features_from_subject(subject_id):
-    print(f"Loading and normalizing data for {subject_id}...")
+    print(f"Loading data for {subject_id} including Respiration...")
     try:
         with open(f"{DATA_PATH}{subject_id}/{subject_id}.pkl", 'rb') as f:
             data = pickle.load(f, encoding='latin1')
@@ -64,47 +64,44 @@ def extract_features_from_subject(subject_id):
 
     ecg_signal = data['signal']['chest']['ECG']
     eda_signal = data['signal']['chest']['EDA'].flatten()
+    resp_signal = data['signal']['chest']['Resp'].flatten()  # Semnalul brut de respirație
     labels = data['label']
 
     try:
+        # Procesare ECG și EDA (existente)
         cleaned_ecg = nk.ecg_clean(ecg_signal, sampling_rate=SAMPLING_RATE)
         _, rpeaks = nk.ecg_peaks(cleaned_ecg, sampling_rate=SAMPLING_RATE)
         rpeaks_indices = rpeaks['ECG_R_Peaks']
         eda_processed, _ = nk.eda_process(eda_signal, sampling_rate=SAMPLING_RATE)
+
+        # --- NEW: Procesare Respirație ---
+        # Curățăm semnalul și extragem trăsăturile specifice (Rhythm, Rate)
+        resp_processed, _ = nk.rsp_process(resp_signal, sampling_rate=SAMPLING_RATE)
     except Exception as e:
         print(f"  Signal processing failed for {subject_id}: {e}")
         return None
 
     features_list = []
 
-    # Iteratie ferestre
     for start in range(0, len(ecg_signal) - window_size_samples, step_size_samples):
         end = start + window_size_samples
-
         if end > len(labels): break
 
         window_labels = labels[start:end]
         most_common_label = np.bincount(window_labels).argmax()
-
-        # 1=Baseline, 2=Stress, 3=Amusement, excludere rest
-        if most_common_label not in [1, 2, 3]:
-            continue
+        if most_common_label not in [1, 2, 3]: continue
 
         peaks_in_window = rpeaks_indices[(rpeaks_indices >= start) & (rpeaks_indices < end)] - start
 
-        # Minim 3 batai de inima pentru HRV
         if len(peaks_in_window) > 3:
             try:
-                # 1. HRV Features
+                # 1. HRV Features (Existente)
                 peaks_df = pd.DataFrame({"ECG_R_Peaks": np.zeros(window_size_samples, dtype=bool)})
                 peaks_df.loc[peaks_in_window, "ECG_R_Peaks"] = True
-
                 hrv = nk.hrv(peaks_df, sampling_rate=SAMPLING_RATE, show=False)
-                # selectare doar numere
-                hrv_numeric = hrv.select_dtypes(include=[np.number])
-                hrv_row = hrv_numeric.iloc[0].to_dict()
+                hrv_row = hrv.select_dtypes(include=[np.number]).iloc[0].to_dict()
 
-                # 2. EDA Features
+                # 2. EDA Features (Existente)
                 eda_window = eda_processed.iloc[start:end]
                 eda_feats = {
                     'EDA_Mean': eda_window['EDA_Clean'].mean(),
@@ -116,7 +113,18 @@ def extract_features_from_subject(subject_id):
                     'EDA_Max': eda_window['EDA_Clean'].max()
                 }
 
-                fused_row = {**hrv_row, **eda_feats}
+                # --- 3. RESP Features (NEW) ---
+                resp_window = resp_processed.iloc[start:end]
+                resp_rate_val = resp_window['RSP_Rate'].fillna(method='ffill').fillna(method='bfill').mean()
+                resp_amp_val = resp_window['RSP_Amplitude'].fillna(0).mean()
+
+                resp_feats = {
+                    'RESP_Rate_Mean': resp_rate_val if not np.isnan(resp_rate_val) else 0,
+                    'RESP_Amplitude_Mean': resp_amp_val if not np.isnan(resp_amp_val) else 0,
+                    'RESP_Std': resp_window['RSP_Clean'].std() if 'RSP_Clean' in resp_window else 0
+                }
+
+                fused_row = {**hrv_row, **eda_feats, **resp_feats}
                 fused_row["Label"] = most_common_label
                 fused_row["Subject"] = subject_id
                 features_list.append(fused_row)
@@ -125,8 +133,8 @@ def extract_features_from_subject(subject_id):
                 continue
 
     if not features_list:
+        print("FUCK MICROSOFT")
         return None
-
     df = pd.DataFrame(features_list)
 
     # handling valori invalide
@@ -138,7 +146,7 @@ def extract_features_from_subject(subject_id):
     # Inlocuire colana NaN cu 0
     df = df.fillna(0)
 
-    #Normalizare per-subiect
+    # Normalizare per-subiect
     feature_cols = [c for c in df.columns if c not in ['Label', 'Subject']]
 
     if not feature_cols:
@@ -153,6 +161,7 @@ def extract_features_from_subject(subject_id):
         print(f"  Scaling error for {subject_id}: {e}")
         return None
 
+    print(f"Returning DF for {subject_id} succesfuly I think")
     return df
 
 
