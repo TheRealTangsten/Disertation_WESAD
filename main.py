@@ -62,16 +62,11 @@ def main():
     print("Loading preprocessed data from JSON...")
     #######################################################################################################################################
     full_df = dataLoading.load_processed_data(json_type="chest", include_resp=True)
-    chest_df_hrv = dataLoading.load_processed_data(json_type="chest", include_hrv=True, include_eda= False,  include_resp=False)
-    chest_df_eda = dataLoading.load_processed_data(json_type="chest", include_hrv=False, include_eda= True,  include_resp=False)
-    chest_df_resp = dataLoading.load_processed_data(json_type="chest", include_hrv=False, include_eda= False,  include_resp=True)
 
     # Encodăm etichetele text în valori numerice (0, 1, 2)
     le = LabelEncoder()
     full_df['Label'] = le.fit_transform(full_df['Label'])
-    chest_df_hrv['Label'] = le.fit_transform(chest_df_hrv['Label'])
-    chest_df_eda['Label'] = le.fit_transform(chest_df_eda['Label'])
-    chest_df_resp['Label'] = le.fit_transform(chest_df_resp['Label'])
+
     num_classes = len(le.classes_)
 
     # SPLIT DATE: SUBIECȚI ANTRENARE vs SUBIECȚI TEST
@@ -79,37 +74,11 @@ def main():
     test_data_all = full_df[full_df['Subject'].isin(TEST_SUBJECTS)].copy()
     train_data_all = full_df[~full_df['Subject'].isin(TEST_SUBJECTS)].copy()
 
-    chest_hrv_test_data = chest_df_hrv[chest_df_hrv['Subject'].isin(TEST_SUBJECTS)].copy()
-    chest_eda_test_data = chest_df_eda[chest_df_eda['Subject'].isin(TEST_SUBJECTS)].copy()
-    chest_resp_test_data = chest_df_resp[chest_df_resp['Subject'].isin(TEST_SUBJECTS)].copy()
-
-    chest_hrv_train_data = chest_df_hrv[~chest_df_hrv['Subject'].isin(TEST_SUBJECTS)].copy()
-    chest_eda_train_data = chest_df_eda[~chest_df_eda['Subject'].isin(TEST_SUBJECTS)].copy()
-    chest_resp_train_data = chest_df_resp[~chest_df_resp['Subject'].isin(TEST_SUBJECTS)].copy()
-
     # Separăm feature-urile de label/subiect pentru setul de train
     X_train = train_data_all.drop(columns=["Label", "Subject"])
 
-    chest_hrv_X_train = chest_hrv_train_data.drop(columns=["Label","Subject"])
-    chest_eda_X_train = chest_eda_train_data.drop(columns=["Label","Subject"])
-    chest_resp_X_train = chest_resp_train_data.drop(columns=["Label","Subject"])
-
-
     y_train = train_data_all["Label"].values
 
-    chest_hrv_Y_train = chest_hrv_train_data["Label"].values
-    chest_eda_Y_train =  chest_eda_train_data["Label"].values
-    chest_resp_Y_train = chest_resp_train_data["Label"].values
-
-    concat_chest_X_train_hrv_eda_resp = []
-    concat_chest_X_train_hrv_eda_resp.append(chest_hrv_X_train)
-    concat_chest_X_train_hrv_eda_resp.append(chest_eda_X_train)
-    concat_chest_X_train_hrv_eda_resp.append(chest_resp_X_train)
-
-    concat_chest_Y_train_hrv_eda_resp = []
-    concat_chest_Y_train_hrv_eda_resp.append(chest_hrv_Y_train)
-    concat_chest_Y_train_hrv_eda_resp.append(chest_eda_Y_train)
-    concat_chest_Y_train_hrv_eda_resp.append(chest_resp_Y_train)
 
     print(f"Training Data Size: {len(X_train)} samples")
     #######################################################################################################################################
@@ -130,29 +99,15 @@ def main():
 
     for sub_id in TEST_SUBJECTS:
         sub_data = test_data_all[test_data_all['Subject'] == sub_id]
-        sub_chest_hrv_test_data = chest_hrv_test_data[chest_hrv_test_data['Subject'] == sub_id]
-        sub_chest_eda_test_data = chest_eda_test_data[chest_eda_test_data['Subject'] == sub_id]
-        sub_chest_resp_test_data = chest_resp_test_data[chest_resp_test_data['Subject'] == sub_id]
+
         if len(sub_data) == 0:
             continue
 
         X_test_sub = sub_data.drop(columns=["Label", "Subject"])
-        X_sub_chest_hrv_test_data = sub_chest_hrv_test_data.drop(columns=["Label", "Subject"])
-        X_sub_chest_eda_test_data = sub_chest_eda_test_data.drop(columns=["Label", "Subject"])
-        X_sub_chest_resp_test_data = sub_chest_resp_test_data.drop(columns=["Label", "Subject"])
-        concat_X_sub_chest_3 = []
-        concat_X_sub_chest_3.append(X_sub_chest_hrv_test_data)
-        concat_X_sub_chest_3.append(X_sub_chest_eda_test_data)
-        concat_X_sub_chest_3.append(X_sub_chest_resp_test_data)
+
 
         y_test_sub = sub_data["Label"].values
-        Y_sub_chest_hrv_test_data = sub_chest_hrv_test_data["Label"].values
-        Y_sub_chest_eda_test_data = sub_chest_eda_test_data["Label"].values
-        Y_sub_chest_resp_test_data = sub_chest_resp_test_data["Label"].values
-        concat_Y_sub_chest_3 = []
-        concat_Y_sub_chest_3.append(Y_sub_chest_hrv_test_data)
-        concat_Y_sub_chest_3.append(Y_sub_chest_eda_test_data)
-        concat_Y_sub_chest_3.append(Y_sub_chest_resp_test_data)
+
 
         # Obținem predicțiile și acuratețea pentru fiecare model în parte folosind predict_model
         acc_rf, y_pred_rf = smu.predict_model(trained_models['RF'], X_test_sub, y_test_sub, 'RF')

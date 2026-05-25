@@ -21,9 +21,9 @@ ALL_SUBJECTS = ['S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S
 TEST_SUBJECTS = ['S15', 'S16', 'S17']
 class_names = ['Baseline', 'Stress', 'Amusement']
 
-chest_df_hrv= []
-chest_df_eda= []
-chest_df_resp= []
+chest_df_hrv = []
+chest_df_eda = []
+chest_df_resp = []
 
 chest_hrv_test_data = []
 chest_eda_test_data = []
@@ -145,7 +145,3 @@ def prepare_train_test_data():
 
     wrist_hrv_Y_train = wrist_hrv_train_data["Label"].values
     wrist_eda_Y_train = wrist_eda_train_data["Label"].values
-
-
-
-    return 0
