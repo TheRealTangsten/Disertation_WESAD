@@ -5,6 +5,8 @@ import pickle
 import neurokit2 as nk
 from sklearn.preprocessing import StandardScaler
 import os
+from sklearn.preprocessing import LabelEncoder
+import data_loading_constants as dlc
 
 # Parametrii globali preluați din proiectul tău
 SAMPLING_RATE = 700
@@ -13,6 +15,12 @@ WINDOW_STEP_SEC = 40
 window_size_samples = WINDOW_SIZE_SEC * SAMPLING_RATE
 step_size_samples = WINDOW_STEP_SEC * SAMPLING_RATE
 DATA_PATH = cnst.path_data
+
+init_call_provide_test_train = True
+
+ALL_SUBJECTS = ['S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S13', 'S14', 'S15', 'S16', 'S17']
+TEST_SUBJECTS = ['S15', 'S16', 'S17']
+class_names = ['Baseline', 'Stress', 'Amusement']
 
 
 # =====================================================================
@@ -372,3 +380,103 @@ def load_processed_data(json_type="chest", folder="Jsons",
 
     print(f"[SUCCESS] Date încărcate: {final_df.shape[0]} rânduri, {final_df.shape[1]} coloane totale.")
     return final_df
+
+
+
+
+
+def provide_train_data_concat(option = "chest", hrv = True, eda = True, resp = True):
+    # option = chest / wrist
+    global init_call_provide_test_train
+    if init_call_provide_test_train == True:
+        init_call_provide_test_train = False
+        dlc.prepare_train_test_data()
+
+    nr_cls = 0
+    return_X_train_data = []
+    return_Y_train_data = []
+    if option == "chest":
+        if hrv == True:
+            return_X_train_data.append(dlc.chest_hrv_X_train)
+            return_Y_train_data.append(dlc.chest_hrv_Y_train)
+            nr_cls = nr_cls + 1
+        if eda == True:
+            return_X_train_data.append(dlc.chest_eda_X_train)
+            return_Y_train_data.append(dlc.chest_eda_Y_train)
+            nr_cls = nr_cls + 1
+        if resp == True:
+            return_X_train_data.append(dlc.chest_resp_X_train)
+            return_Y_train_data.append(dlc.chest_resp_Y_train)
+            nr_cls = nr_cls + 1
+
+    if option == "wrist":
+        resp = False
+
+        if hrv == True:
+            return_X_train_data.append(dlc.wrist_hrv_X_train)
+            return_Y_train_data.append(dlc.wrist_hrv_Y_train)
+            nr_cls = nr_cls + 1
+        if eda == True:
+            return_X_train_data.append(dlc.wrist_eda_X_train)
+            return_Y_train_data.append(dlc.wrist_eda_Y_train)
+            nr_cls = nr_cls + 1
+
+    return return_X_train_data, return_Y_train_data, nr_cls
+
+#TODO do the same SHIT for subject data for test
+def provide_test_data_concat(sub_id, option = "chest", hrv = True, eda = True, resp = True):
+
+    return_X_concat = []
+    return_Y_concat = []
+    nr_cls = 0
+    if option == "chest":
+        if hrv  == True:
+            sub_chest_hrv_test_data = dlc.chest_hrv_test_data[dlc.chest_hrv_test_data['Subject'] == sub_id]
+            X_sub_chest_hrv_test_data = sub_chest_hrv_test_data.drop(columns=["Label", "Subject"])
+            Y_sub_chest_hrv_test_data = sub_chest_hrv_test_data["Label"].values
+            return_X_concat.append(X_sub_chest_hrv_test_data)
+            return_Y_concat.append(Y_sub_chest_hrv_test_data)
+            nr_cls = nr_cls + 1
+
+        if eda == True:
+            sub_chest_eda_test_data = dlc.chest_eda_test_data[dlc.chest_eda_test_data['Subject'] == sub_id]
+            X_sub_chest_eda_test_data = sub_chest_eda_test_data.drop(columns=["Label", "Subject"])
+            Y_sub_chest_eda_test_data = sub_chest_eda_test_data["Label"].values
+            return_X_concat.append(X_sub_chest_eda_test_data)
+            return_Y_concat.append(Y_sub_chest_eda_test_data)
+            nr_cls = nr_cls + 1
+
+        if resp == True:
+            sub_chest_resp_test_data = dlc.chest_resp_test_data[dlc.chest_resp_test_data['Subject'] == sub_id]
+            X_sub_chest_resp_test_data = sub_chest_resp_test_data.drop(columns=["Label", "Subject"])
+            Y_sub_chest_resp_test_data = sub_chest_resp_test_data["Label"].values
+            return_X_concat.append(X_sub_chest_resp_test_data)
+            return_Y_concat.append(Y_sub_chest_resp_test_data)
+            nr_cls = nr_cls + 1
+
+    if option == "wrist":
+        if hrv == True:
+            sub_wrist_hrv_test_data = dlc.wrist_hrv_test_data[dlc.wrist_hrv_test_data['Subject'] == sub_id]
+            X_sub_wrist_hrv_test_data = sub_wrist_hrv_test_data.drop(columns=["Label", "Subject"])
+            Y_sub_wrist_hrv_test_data = sub_wrist_hrv_test_data["Label"].values
+            return_X_concat.append(X_sub_wrist_hrv_test_data)
+            return_Y_concat.append(Y_sub_wrist_hrv_test_data)
+            nr_cls = nr_cls + 1
+
+        if eda == True:
+            sub_wrist_eda_test_data = dlc.wrist_eda_test_data[dlc.wrist_eda_test_data['Subject'] == sub_id]
+            X_sub_wrist_eda_test_data = sub_wrist_eda_test_data.drop(columns=["Label", "Subject"])
+            Y_sub_wrist_eda_test_data = sub_wrist_eda_test_data["Label"].values
+            return_X_concat.append(X_sub_wrist_eda_test_data)
+            return_Y_concat.append(Y_sub_wrist_eda_test_data)
+            nr_cls = nr_cls + 1
+
+
+
+    return return_X_concat, return_Y_concat, nr_cls
+
+
+
+
+
+

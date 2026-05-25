@@ -108,7 +108,7 @@ def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y
 
 print("Loading preprocessed data from JSON...")
 #full_df = pd.read_json("Jsons\chest.json", orient="records")
-full_df = dataLoading.load_processed_data(json_type="chest", include_resp=False)
+full_df = dataLoading.load_processed_data(json_type="chest", include_resp=True)
 
 
 # Labels
