@@ -36,11 +36,11 @@ class_names = ['Baseline', 'Stress', 'Amusement']
 
 
 # Funcția grafică păstrată din scriptul original
-def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y_pred_trans, y_pred_lstm, classes):
+def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y_pred_trans, y_pred_lstm, classes, model_names = ['Random Forest', 'CNN', 'Transformer', 'LSTM']):
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle(f'Confusion Matrices for Subject {subject_id}', fontsize=16)
 
-    model_names = ['Random Forest', 'CNN', 'Transformer', 'LSTM']
+
     predictions = [y_pred_rf, y_pred_cnn, y_pred_trans, y_pred_lstm]
     axes = axes.flatten()
 
@@ -61,11 +61,13 @@ def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y
 def main():
     print("Loading preprocessed data from JSON...")
     #######################################################################################################################################
-    full_df = dataLoading.load_processed_data(json_type="chest", include_resp=True)
+    full_df = dataLoading.load_processed_data(json_type="chest", include_resp=False)
+    full_df_wrist = dataLoading.load_processed_data(json_type="wrist", include_resp=False)
 
     # Encodăm etichetele text în valori numerice (0, 1, 2)
     le = LabelEncoder()
     full_df['Label'] = le.fit_transform(full_df['Label'])
+    full_df_wrist['Label'] = le.fit_transform(full_df_wrist['Label'])
 
     num_classes = len(le.classes_)
 
@@ -73,6 +75,8 @@ def main():
     print(f"\n[INFO] Splitting Data. Test Subjects: {TEST_SUBJECTS}")
     test_data_all = full_df[full_df['Subject'].isin(TEST_SUBJECTS)].copy()
     train_data_all = full_df[~full_df['Subject'].isin(TEST_SUBJECTS)].copy()
+
+    test_data_all_wrist = full_df_wrist[full_df_wrist['Subject'].isin(TEST_SUBJECTS)].copy()
 
     # Separăm feature-urile de label/subiect pentru setul de train
     X_train = train_data_all.drop(columns=["Label", "Subject"])
@@ -86,19 +90,25 @@ def main():
     models_to_train = ['RF', 'CNN', 'TRANS', 'LSTM']
     trained_models = {}
 
+    #Classic Train: RF, CNN, TRANS, LSTM
     for m_name in models_to_train:
-        # Apelăm funcția train_model din noul fișier utilitar
         trained_models[m_name] = smu.train_model(X_train, y_train, num_classes, m_name)
 
-    xt, yt, _ = dataLoading.provide_train_data_concat(option = "chest", hrv = True, eda = True, resp = True)
-    #trained_multi_cnn = smu.train_multi_branch_by_vector_count(concat_chest_X_train_hrv_eda_resp, concat_chest_Y_train_hrv_eda_resp, num_classes)
+    xt, yt, _ = dataLoading.provide_train_data_concat(option = "chest", hrv = True, eda = True, resp = False)
     trained_multi_cnn = smu.train_multi_branch_by_vector_count(xt, yt, num_classes)
+    trained_multi_lstm = smu.train_multi_branch_lstm_by_vector_count(xt, yt, num_classes)
+    trained_multi_rf = smu.train_multi_rf_independent_branches(xt, yt, num_classes)
+
+    wxt, wyt, _ = dataLoading.provide_train_data_concat(option = "wrist", hrv = True, eda = True, resp = False)
+    trained_multi_rf_2 = smu.train_multi_rf_independent_branches(wxt, wyt, num_classes)
+
     # --- EVALUARE PE FIECARE SUBIECT DE TEST ---
     print("\n=== STARTING EVALUATION ON TEST SUBJECTS ===")
     results = []
 
     for sub_id in TEST_SUBJECTS:
         sub_data = test_data_all[test_data_all['Subject'] == sub_id]
+        sub_data_wrist = test_data_all_wrist[test_data_all_wrist['Subject']  == sub_id]
 
         if len(sub_data) == 0:
             continue
@@ -109,14 +119,20 @@ def main():
         y_test_sub = sub_data["Label"].values
 
 
-        # Obținem predicțiile și acuratețea pentru fiecare model în parte folosind predict_model
+        # Classic Test: RF, CNN, TRANS, LSTM
         acc_rf, y_pred_rf = smu.predict_model(trained_models['RF'], X_test_sub, y_test_sub, 'RF')
         acc_cnn, y_pred_cnn = smu.predict_model(trained_models['CNN'], X_test_sub, y_test_sub, 'CNN')
         acc_trans, y_pred_trans = smu.predict_model(trained_models['TRANS'], X_test_sub, y_test_sub, 'TRANS')
         acc_lstm, y_pred_lstm = smu.predict_model(trained_models['LSTM'], X_test_sub, y_test_sub, 'LSTM')
 
-        xxt, yyt, _ = dataLoading.provide_test_data_concat(sub_id, option="chest", hrv = True, eda = True, resp = True)
+        xxt, yyt, _ = dataLoading.provide_test_data_concat(sub_id, option="chest", hrv=True, eda=True, resp=False)
         acc_multi_cnn_3, y_pred_multi_cnn_3 =  smu.predict_multi_branch_by_vector_count(trained_multi_cnn, xxt, yyt )
+        acc_lstm_multi, y_pred_lstm_multi= smu.predict_multi_branch_lstm_by_vector_count(trained_multi_lstm, xxt, yyt)
+        acc_multi_rf, y_pred_multi_rf, _ = smu.predict_multi_rf_independent_branches(trained_multi_rf, xxt, yyt)
+
+        wxxt, wyyt, _ = dataLoading.provide_test_data_concat(sub_id, option="wrist", hrv=True, eda=True, resp=False)
+        y_test_sub_2 = sub_data_wrist["Label"].values
+        acc_multi_rf_2, y_pred_multi_rf_2, _ = smu.predict_multi_rf_independent_branches(trained_multi_rf_2, wxxt, wyyt)
 
         print(
             f"\n  Result {sub_id}: RF={acc_rf:.2f}, CNN={acc_cnn:.2f}, Transformer={acc_trans:.2f}, LSTM={acc_lstm:.2f}")
@@ -129,6 +145,9 @@ def main():
             'acc_transformer': acc_trans,
             'acc_lstm': acc_lstm,
             'acc_multi_cnn_3': acc_multi_cnn_3,
+            'acc_lstm_multi': acc_lstm_multi,
+            'acc_multi_rf': acc_multi_rf,
+            'acc_multi_rf_2': acc_multi_rf_2
         })
 
         # Afișarea matricelor de confuzie aferente subiectului curent
@@ -142,6 +161,29 @@ def main():
             y_pred_lstm,
             class_names
         )
+        model_names = ['Multi CNN 3', 'Multi LSTM', 'Chest RF Full', 'Wrist RF Full']
+        plot_subject_confusion_matrices(
+            sub_id,
+            y_test_sub,
+            y_pred_multi_cnn_3,
+            y_pred_lstm_multi,
+            y_pred_multi_rf,
+            y_pred_multi_rf,
+            class_names,
+            model_names
+        )
+
+        model_names = ['Wrist RF Full', 'Wrist RF Full', 'Wrist RF Full', 'Wrist RF Full']
+        plot_subject_confusion_matrices(
+            sub_id,
+            y_test_sub_2,
+            y_pred_multi_rf_2,
+            y_pred_multi_rf_2,
+            y_pred_multi_rf_2,
+            y_pred_multi_rf_2,
+            class_names,
+            model_names
+        )
 
     # --- AFISARE REZULTATE FINALE MEDII ---
     df_results = pd.DataFrame(results)
@@ -154,7 +196,9 @@ def main():
         print(f"CNN: {df_results['acc_cnn'].mean():.2f}")
         print(f"Transformer (TRANS): {df_results['acc_transformer'].mean():.2f}")
         print(f"LSTM: {df_results['acc_lstm'].mean():.2f}")
-        print(f"Multi CNN 3: {df_results['acc_multi_cnn_3'].mean():.2f}")
+        print(f"Multi CNN: {df_results['acc_multi_cnn_3'].mean():.2f}")
+        print(f"Multi LSTM: {df_results['acc_lstm_multi'].mean():.2f}")
+        print(f"Multi RF: {df_results['acc_multi_rf'].mean():.2f}")
 
 
 if __name__ == "__main__":

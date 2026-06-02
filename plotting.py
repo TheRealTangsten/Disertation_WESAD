@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def plot_subject_confusion_matrices(subject_id, y_true, y_pred, classes, model_name):
+def plot_sub_conf_mat(subject_id, y_true, y_pred, classes, model_name):
     fig, axes = plt.subplots(1, 1, figsize=(12, 10))
     fig.suptitle(f'Confusion Matrices for Subject {subject_id}', fontsize=16)
 

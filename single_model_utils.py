@@ -126,11 +126,9 @@ def predict_model(model, X_test, y_test, model_name):
     return acc, y_pred
 
 
-import numpy as np
-import tensorflow as tf
-from keras.utils import to_categorical
-from sklearn.metrics import accuracy_score
-import cnn_model as cnn
+
+
+
 
 
 def train_multi_branch_by_vector_count(X_train, y_train, num_classes):
@@ -227,3 +225,157 @@ def predict_multi_branch_by_vector_count(model, X_test, y_test):
         acc = 0.0
 
     return acc, y_pred
+
+
+def train_multi_branch_lstm_by_vector_count(X_list, y_list, num_classes, epochs=30, batch_size=32,
+                                            class_weights_dict=None):
+    """
+    Antrenează modelul LSTM multimodal utilizând ieșirea directă de tip listă (xt, yt).
+    """
+    print(f"\n[INFO] Pregătire date Train pentru Multi-Branch LSTM...")
+
+    # 1. Extrage etichetele globale din prima ramură (sunt identice pentru toate ramurile)
+    y_train = y_list[0]
+    if hasattr(y_train, 'values'):
+        y_train = y_train.values
+    y_train_cat = to_categorical(y_train, num_classes=num_classes)
+
+    prepared_inputs = []
+    branch_shapes = []
+
+    # 2. Reshaping automat din 2D în 3D (samples, timesteps, 1) pentru fiecare ramură din listă
+    for i, X_branch in enumerate(X_list):
+        if hasattr(X_branch, 'values'):
+            X_branch = X_branch.values
+
+        # Transformăm în formatul cerut de LSTM: (baze_date, caracteristici, 1 canal)
+        X_3d = X_branch.reshape(X_branch.shape[0], X_branch.shape[1], 1)
+        prepared_inputs.append(X_3d)
+
+        # Salvăm configurația dimensională pentru construcția rețelei
+        branch_shapes.append((X_branch.shape[1], 1))
+        print(f"  -> Ramura {i} procesată cu dimensiunea de input: {branch_shapes[-1]}")
+
+    # 3. Construirea automată a modelului pe baza structurii listei trimise
+    model = lstm.build_multi_branch_lstm_model(num_classes, branch_shapes)
+
+    # 4. Rularea antrenării
+    print("  -> Se începe antrenarea modelului Multi-Branch LSTM...")
+    model.fit(
+        x=prepared_inputs,
+        y=y_train_cat,
+        epochs=epochs,
+        batch_size=batch_size,
+        class_weight=class_weights_dict,
+        verbose=1
+    )
+
+    return model
+
+def predict_multi_branch_lstm_by_vector_count(model, X_list, y_list):
+    """
+    Efectuează predicții și returnează acuratețea și etichetele prezise pentru setul de test (xxt, yyt).
+    """
+    # 1. Reshaping date de test în format 3D (samples, timesteps, 1)
+    prepared_inputs = []
+    for X_branch in X_list:
+        if hasattr(X_branch, 'values'):
+            X_branch = X_branch.values
+        X_3d = X_branch.reshape(X_branch.shape[0], X_branch.shape[1], 1)
+        prepared_inputs.append(X_3d)
+
+    # 2. Generare predicții brute (probabilități)
+    probs = model.predict(prepared_inputs, verbose=0)
+
+    if len(probs) > 0:
+        y_pred = np.argmax(probs, axis=1)
+    else:
+        y_pred = np.zeros(len(X_list[0]))
+
+    # 3. Preluarea etichetelor reale de test pentru evaluare
+    y_test = y_list[0]
+    if hasattr(y_test, 'values'):
+        y_test = y_test.values
+
+    # Calcul acuratețe scurt și curat
+    acc = accuracy_score(y_test, y_pred)
+
+    return acc, y_pred
+
+
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+
+
+def train_multi_rf_independent_branches(X_list, y_list, num_classes=3, n_estimators=100, class_weights_dict=None):
+    """
+    Antrenează un model Random Forest separat pentru fiecare vector de intrare (ramură).
+    Returnează o listă de modele antrenate.
+    """
+    print(f"\n[INFO] Pregătire date Train pentru Multi-RF (Independent pe ramuri)...")
+
+    # 1. Extragem etichetele (comune pentru toate ramurile)
+    y_train = y_list[0]
+    if hasattr(y_train, 'values'):
+        y_train = y_train.values
+
+    cw = class_weights_dict if class_weights_dict is not None else 'balanced'
+
+    trained_rf_models = []
+
+    # 2. Iterăm prin fiecare ramură de date și antrenăm un RF dedicat
+    for i, X_branch in enumerate(X_list):
+        if hasattr(X_branch, 'values'):
+            X_branch = X_branch.values
+
+        print(f"  -> Antrenare RF independent pentru ramura {i} (Dimensiune: {X_branch.shape})")
+
+        # Inițializăm și antrenăm modelul specific acestei modalități
+        model = RandomForestClassifier(n_estimators=n_estimators, class_weight=cw, random_state=42)
+        model.fit(X_branch, y_train)
+
+        # Salvăm modelul în lista de modele
+        trained_rf_models.append(model)
+
+    return trained_rf_models
+
+
+def predict_multi_rf_independent_branches(models_list, X_list, y_list):
+    """
+    Efectuează predicții folosind lista de modele RF antrenate (unul per ramură).
+    Folosește metoda 'Soft Voting' (media probabilităților) pentru a lua decizia finală.
+    """
+    # Etichetele reale pentru calculul acurateței
+    y_test = y_list[0]
+    if hasattr(y_test, 'values'):
+        y_test = y_test.values
+
+    num_samples = X_list[0].shape[0] if not hasattr(X_list[0], 'values') else X_list[0].values.shape[0]
+    num_classes = len(models_list[0].classes_)
+
+    # Inițializăm o matrice zero pentru a aduna probabilitățile de la fiecare model
+    # Dimensiune: (număr_subiecți_test, număr_clase)
+    summed_probs = np.zeros((num_samples, num_classes))
+
+    # Iterăm simultan prin modele și prin ramurile de test corespunzătoare
+    for model, X_branch in zip(models_list, X_list):
+        if hasattr(X_branch, 'values'):
+            X_branch = X_branch.values
+
+        # Obținem probabilitățile prezise de acest model specific (ex. doar din HRV)
+        probs = model.predict_proba(X_branch)
+
+        # Adunăm probabilitățile
+        summed_probs += probs
+
+    # Calculăm media probabilităților împărțind la numărul de modele (ramuri)
+    avg_probs = summed_probs / len(models_list)
+
+    # Clasa finală este cea cu probabilitatea medie maximă
+    y_pred = np.argmax(avg_probs, axis=1)
+
+    # Calculăm acuratețea
+    acc = accuracy_score(y_test, y_pred)
+
+    return acc, y_pred, avg_probs

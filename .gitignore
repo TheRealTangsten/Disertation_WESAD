@@ -2,3 +2,4 @@ TEST*.py
 idei*
 ~$idei.rtf
 __pycache__/*
+__pycache__
