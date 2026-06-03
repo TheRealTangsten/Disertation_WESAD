@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 import os
 from sklearn.preprocessing import LabelEncoder
 import data_loading_constants as dlc
+import data_loading_constants_2classes as dlc2
 
 # Parametrii globali preluați din proiectul tău
 SAMPLING_RATE = 700
@@ -17,6 +18,8 @@ step_size_samples = WINDOW_STEP_SEC * SAMPLING_RATE
 DATA_PATH = cnst.path_data
 
 init_call_provide_test_train = True
+init_call_provide_test_train_2cls = True
+
 
 ALL_SUBJECTS = ['S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S13', 'S14', 'S15', 'S16', 'S17']
 TEST_SUBJECTS = ['S15', 'S16', 'S17']
@@ -444,7 +447,9 @@ def load_processed_data_binary(json_type="chest", folder="Jsons",
     return final_df
 
 
-
+# =====================================================================
+# 3. LOAD CACHED DATA
+# =====================================================================
 def provide_train_data_concat(option = "chest", hrv = True, eda = True, resp = True):
     # option = chest / wrist
     global init_call_provide_test_train
@@ -483,12 +488,16 @@ def provide_train_data_concat(option = "chest", hrv = True, eda = True, resp = T
 
     return return_X_train_data, return_Y_train_data, nr_cls
 
-#TODO do the same SHIT for subject data for test
 def provide_test_data_concat(sub_id, option = "chest", hrv = True, eda = True, resp = True):
+
+    global init_call_provide_test_train
+    if init_call_provide_test_train == True:
+        init_call_provide_test_train = False
+        dlc.prepare_train_test_data()
 
     return_X_concat = []
     return_Y_concat = []
-    nr_cls = 0
+    nr_datas = 0
     if option == "chest":
         if hrv  == True:
             sub_chest_hrv_test_data = dlc.chest_hrv_test_data[dlc.chest_hrv_test_data['Subject'] == sub_id]
@@ -496,7 +505,7 @@ def provide_test_data_concat(sub_id, option = "chest", hrv = True, eda = True, r
             Y_sub_chest_hrv_test_data = sub_chest_hrv_test_data["Label"].values
             return_X_concat.append(X_sub_chest_hrv_test_data)
             return_Y_concat.append(Y_sub_chest_hrv_test_data)
-            nr_cls = nr_cls + 1
+            nr_datas = nr_datas + 1
 
         if eda == True:
             sub_chest_eda_test_data = dlc.chest_eda_test_data[dlc.chest_eda_test_data['Subject'] == sub_id]
@@ -504,7 +513,7 @@ def provide_test_data_concat(sub_id, option = "chest", hrv = True, eda = True, r
             Y_sub_chest_eda_test_data = sub_chest_eda_test_data["Label"].values
             return_X_concat.append(X_sub_chest_eda_test_data)
             return_Y_concat.append(Y_sub_chest_eda_test_data)
-            nr_cls = nr_cls + 1
+            nr_datas = nr_datas + 1
 
         if resp == True:
             sub_chest_resp_test_data = dlc.chest_resp_test_data[dlc.chest_resp_test_data['Subject'] == sub_id]
@@ -512,7 +521,7 @@ def provide_test_data_concat(sub_id, option = "chest", hrv = True, eda = True, r
             Y_sub_chest_resp_test_data = sub_chest_resp_test_data["Label"].values
             return_X_concat.append(X_sub_chest_resp_test_data)
             return_Y_concat.append(Y_sub_chest_resp_test_data)
-            nr_cls = nr_cls + 1
+            nr_datas = nr_datas + 1
 
     if option == "wrist":
         if hrv == True:
@@ -521,7 +530,7 @@ def provide_test_data_concat(sub_id, option = "chest", hrv = True, eda = True, r
             Y_sub_wrist_hrv_test_data = sub_wrist_hrv_test_data["Label"].values
             return_X_concat.append(X_sub_wrist_hrv_test_data)
             return_Y_concat.append(Y_sub_wrist_hrv_test_data)
-            nr_cls = nr_cls + 1
+            nr_datas = nr_datas + 1
 
         if eda == True:
             sub_wrist_eda_test_data = dlc.wrist_eda_test_data[dlc.wrist_eda_test_data['Subject'] == sub_id]
@@ -529,13 +538,105 @@ def provide_test_data_concat(sub_id, option = "chest", hrv = True, eda = True, r
             Y_sub_wrist_eda_test_data = sub_wrist_eda_test_data["Label"].values
             return_X_concat.append(X_sub_wrist_eda_test_data)
             return_Y_concat.append(Y_sub_wrist_eda_test_data)
-            nr_cls = nr_cls + 1
+            nr_datas = nr_datas + 1
 
 
 
-    return return_X_concat, return_Y_concat, nr_cls
+    return return_X_concat, return_Y_concat, nr_datas
+
+def provide_train_data_concat_2cls(option = "chest", hrv = True, eda = True, resp = True):
+    # option = chest / wrist
+    global init_call_provide_test_train_2cls
+    if init_call_provide_test_train_2cls == True:
+        init_call_provide_test_train_2cls = False
+        dlc2.prepare_train_test_data_2classes()
+
+    nr_datas = 0
+    return_X_train_data = []
+    return_Y_train_data = []
+    if option == "chest":
+        if hrv == True:
+            return_X_train_data.append(dlc2.chest_hrv_X_train_2cls)
+            return_Y_train_data.append(dlc2.chest_hrv_Y_train_2cls)
+            nr_datas = nr_datas + 1
+        if eda == True:
+            return_X_train_data.append(dlc2.chest_eda_X_train_2cls)
+            return_Y_train_data.append(dlc2.chest_eda_Y_train_2cls)
+            nr_datas = nr_datas + 1
+        if resp == True:
+            return_X_train_data.append(dlc2.chest_resp_X_train_2cls)
+            return_Y_train_data.append(dlc2.chest_resp_Y_train_2cls)
+            nr_datas = nr_datas + 1
+
+    if option == "wrist":
+        resp = False
+
+        if hrv == True:
+            return_X_train_data.append(dlc2.wrist_hrv_X_train_2cls)
+            return_Y_train_data.append(dlc2.wrist_hrv_Y_train_2cls)
+            nr_datas = nr_datas + 1
+        if eda == True:
+            return_X_train_data.append(dlc2.wrist_eda_X_train_2cls)
+            return_Y_train_data.append(dlc2.wrist_eda_Y_train_2cls)
+            nr_datas = nr_datas + 1
+
+    return return_X_train_data, return_Y_train_data, nr_datas
+
+def provide_test_data_concat_2cls(sub_id, option = "chest", hrv = True, eda = True, resp = True):
+
+    global init_call_provide_test_train_2cls
+    if init_call_provide_test_train_2cls == True:
+        init_call_provide_test_train_2cls = False
+        dlc2.prepare_train_test_data_2classes()
+
+    return_X_concat = []
+    return_Y_concat = []
+    nr_datas = 0
+    if option == "chest":
+        if hrv  == True:
+            sub_chest_hrv_test_data = dlc2.chest_hrv_test_data_2cls[dlc2.chest_hrv_test_data_2cls['Subject'] == sub_id]
+            X_sub_chest_hrv_test_data = sub_chest_hrv_test_data.drop(columns=["Label", "Subject"])
+            Y_sub_chest_hrv_test_data = sub_chest_hrv_test_data["Label"].values
+            return_X_concat.append(X_sub_chest_hrv_test_data)
+            return_Y_concat.append(Y_sub_chest_hrv_test_data)
+            nr_datas = nr_datas + 1
+
+        if eda == True:
+            sub_chest_eda_test_data = dlc2.chest_eda_test_data_2cls[dlc2.chest_eda_test_data_2cls['Subject'] == sub_id]
+            X_sub_chest_eda_test_data = sub_chest_eda_test_data.drop(columns=["Label", "Subject"])
+            Y_sub_chest_eda_test_data = sub_chest_eda_test_data["Label"].values
+            return_X_concat.append(X_sub_chest_eda_test_data)
+            return_Y_concat.append(Y_sub_chest_eda_test_data)
+            nr_datas = nr_datas + 1
+
+        if resp == True:
+            sub_chest_resp_test_data = dlc2.chest_resp_test_data_2cls[dlc2.chest_resp_test_data_2cls['Subject'] == sub_id]
+            X_sub_chest_resp_test_data = sub_chest_resp_test_data.drop(columns=["Label", "Subject"])
+            Y_sub_chest_resp_test_data = sub_chest_resp_test_data["Label"].values
+            return_X_concat.append(X_sub_chest_resp_test_data)
+            return_Y_concat.append(Y_sub_chest_resp_test_data)
+            nr_datas = nr_datas + 1
+
+    if option == "wrist":
+        if hrv == True:
+            sub_wrist_hrv_test_data = dlc2.wrist_hrv_test_data_2cls[dlc2.wrist_hrv_test_data_2cls['Subject'] == sub_id]
+            X_sub_wrist_hrv_test_data = sub_wrist_hrv_test_data.drop(columns=["Label", "Subject"])
+            Y_sub_wrist_hrv_test_data = sub_wrist_hrv_test_data["Label"].values
+            return_X_concat.append(X_sub_wrist_hrv_test_data)
+            return_Y_concat.append(Y_sub_wrist_hrv_test_data)
+            nr_datas = nr_datas + 1
+
+        if eda == True:
+            sub_wrist_eda_test_data = dlc2.wrist_eda_test_data_2cls[dlc2.wrist_eda_test_data_2cls['Subject'] == sub_id]
+            X_sub_wrist_eda_test_data = sub_wrist_eda_test_data.drop(columns=["Label", "Subject"])
+            Y_sub_wrist_eda_test_data = sub_wrist_eda_test_data["Label"].values
+            return_X_concat.append(X_sub_wrist_eda_test_data)
+            return_Y_concat.append(Y_sub_wrist_eda_test_data)
+            nr_datas = nr_datas + 1
 
 
+
+    return return_X_concat, return_Y_concat, nr_datas
 
 
 
