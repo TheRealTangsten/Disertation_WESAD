@@ -382,6 +382,66 @@ def load_processed_data(json_type="chest", folder="Jsons",
     return final_df
 
 
+def load_processed_data_binary(json_type="chest", folder="Jsons",
+                               include_hrv=True, include_eda=True, include_resp=True):
+    """
+    Citește un fișier JSON (wrist sau chest), selectează trăsăturile specificate
+    și transformă problema într-una de clasificare binară:
+    Baseline (1) și Amusement (3) devin Non-Stress (0), iar Stress (2) devine Stress (1).
+    """
+    file_path = os.path.join(folder, f"{json_type}.json")
+
+    if not os.path.exists(file_path):
+        print(f"[EROARE] Fișierul {file_path} nu există!")
+        return None
+
+    print(f"[INFO] Încărcare date din {file_path} pentru clasificare binară (Stress vs Non-Stress)...")
+    df = pd.read_json(file_path, orient="records")
+
+    # --- RECTIFICARE MAPARE CLASE ---
+    # În JSON-ul brut: 1 = Baseline, 2 = Stress, 3 = Amusement
+    # Noua logică:
+    # 1 (Baseline)   -> 0 (Non-Stress)
+    # 3 (Amusement)  -> 0 (Non-Stress)
+    # 2 (Stress)     -> 1 (Stress)
+    mapping = {1: 0, 3: 0, 2: 1}
+
+    df['Label'] = df['Label'].map(mapping)
+
+    # Identificăm coloanele de bază care nu reprezintă trăsături semnal
+    base_cols = ['Label', 'Subject']
+
+    # Definim cuvintele cheie pentru filtrarea semnalelor
+    hrv_keywords = ['HRV', 'ECG_Rate', 'BVP_Rate']
+    eda_keywords = ['EDA_', 'SCR_', 'SCL_']
+    resp_keywords = ['Respir', 'RRV', 'RESP_']
+
+    selected_features = []
+
+    if json_type == "wrist":
+        include_resp = False
+
+    # Logica de filtrare a coloanelor pe baza argumentelor funcției
+    for col in df.columns:
+        if col in base_cols:
+            selected_features.append(col)
+            continue
+
+        keep = False
+        if include_hrv and any(key in col for key in hrv_keywords):
+            keep = True
+        if include_eda and any(key in col for key in eda_keywords):
+            keep = True
+        if include_resp and any(key in col for key in resp_keywords):
+            keep = True
+
+        if keep:
+            selected_features.append(col)
+
+    final_df = df[selected_features]
+
+    print(f"[SUCCESS] Date binare încărcate: {final_df.shape[0]} rânduri, {final_df.shape[1]} coloane totale.")
+    return final_df
 
 
 

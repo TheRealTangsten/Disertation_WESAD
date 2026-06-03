@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import tensorflow as tf
+import plotting as plting
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import confusion_matrix
@@ -33,6 +34,7 @@ DATA_PATH = cnst.path_data
 ALL_SUBJECTS = ['S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S13', 'S14', 'S15', 'S16', 'S17']
 TEST_SUBJECTS = ['S15', 'S16', 'S17']
 class_names = ['Baseline', 'Stress', 'Amusement']
+class_names_binary = ['No Stress', 'Stress']
 
 
 # Funcția grafică păstrată din scriptul original
@@ -63,25 +65,36 @@ def main():
     #######################################################################################################################################
     full_df = dataLoading.load_processed_data(json_type="chest", include_resp=False)
     full_df_wrist = dataLoading.load_processed_data(json_type="wrist", include_resp=False)
+    full_df_binary = dataLoading.load_processed_data_binary(json_type="chest", include_resp=False)
 
     # Encodăm etichetele text în valori numerice (0, 1, 2)
     le = LabelEncoder()
     full_df['Label'] = le.fit_transform(full_df['Label'])
     full_df_wrist['Label'] = le.fit_transform(full_df_wrist['Label'])
 
+    le2 = LabelEncoder()
+    full_df_binary['Label'] = le2.fit_transform(full_df_binary['Label'])
+
     num_classes = len(le.classes_)
+    num_classes_2 = len(le2.classes_)
 
     # SPLIT DATE: SUBIECȚI ANTRENARE vs SUBIECȚI TEST
     print(f"\n[INFO] Splitting Data. Test Subjects: {TEST_SUBJECTS}")
     test_data_all = full_df[full_df['Subject'].isin(TEST_SUBJECTS)].copy()
     train_data_all = full_df[~full_df['Subject'].isin(TEST_SUBJECTS)].copy()
 
+    test_data_all_2_cls = full_df_binary[full_df_binary['Subject'].isin(TEST_SUBJECTS)].copy()
+    train_data_all_2_cls =  full_df_binary[~full_df_binary['Subject'].isin(TEST_SUBJECTS)].copy()
+
     test_data_all_wrist = full_df_wrist[full_df_wrist['Subject'].isin(TEST_SUBJECTS)].copy()
+    #train_data_all_wrist = full_df_wrist[~full_df_wrist['Subject'].isin(TEST_SUBJECTS)].copy()
 
     # Separăm feature-urile de label/subiect pentru setul de train
     X_train = train_data_all.drop(columns=["Label", "Subject"])
+    X_train_2_cls = train_data_all_2_cls.drop(columns=["Label", "Subject"])
 
     y_train = train_data_all["Label"].values
+    y_train_2_cls = train_data_all_2_cls["Label"].values
 
 
     print(f"Training Data Size: {len(X_train)} samples")
@@ -93,6 +106,8 @@ def main():
     #Classic Train: RF, CNN, TRANS, LSTM
     for m_name in models_to_train:
         trained_models[m_name] = smu.train_model(X_train, y_train, num_classes, m_name)
+
+    RF_2_cls = smu.train_model(X_train_2_cls, y_train_2_cls, num_classes_2, 'RF')
 
     xt, yt, _ = dataLoading.provide_train_data_concat(option = "chest", hrv = True, eda = True, resp = False)
     trained_multi_cnn = smu.train_multi_branch_by_vector_count(xt, yt, num_classes)
@@ -108,16 +123,19 @@ def main():
 
     for sub_id in TEST_SUBJECTS:
         sub_data = test_data_all[test_data_all['Subject'] == sub_id]
-        sub_data_wrist = test_data_all_wrist[test_data_all_wrist['Subject']  == sub_id]
+        sub_data_wrist = test_data_all_wrist[test_data_all_wrist['Subject'] == sub_id]
+
+        sub_data_2_cls = test_data_all_2_cls[test_data_all_2_cls['Subject'] == sub_id]
 
         if len(sub_data) == 0:
             continue
 
         X_test_sub = sub_data.drop(columns=["Label", "Subject"])
+        X_test_sub_2_cls = sub_data_2_cls.drop(columns=["Label", "Subject"])
 
 
         y_test_sub = sub_data["Label"].values
-
+        y_test_sub_2_cls = sub_data_2_cls["Label"].values
 
         # Classic Test: RF, CNN, TRANS, LSTM
         acc_rf, y_pred_rf = smu.predict_model(trained_models['RF'], X_test_sub, y_test_sub, 'RF')
@@ -125,13 +143,16 @@ def main():
         acc_trans, y_pred_trans = smu.predict_model(trained_models['TRANS'], X_test_sub, y_test_sub, 'TRANS')
         acc_lstm, y_pred_lstm = smu.predict_model(trained_models['LSTM'], X_test_sub, y_test_sub, 'LSTM')
 
+        acc_rf_2_cls, y_pred_rf_2_cls = smu.predict_model(RF_2_cls, X_test_sub_2_cls, y_test_sub_2_cls, 'RF')
+
         xxt, yyt, _ = dataLoading.provide_test_data_concat(sub_id, option="chest", hrv=True, eda=True, resp=False)
         acc_multi_cnn_3, y_pred_multi_cnn_3 =  smu.predict_multi_branch_by_vector_count(trained_multi_cnn, xxt, yyt )
         acc_lstm_multi, y_pred_lstm_multi= smu.predict_multi_branch_lstm_by_vector_count(trained_multi_lstm, xxt, yyt)
         acc_multi_rf, y_pred_multi_rf, _ = smu.predict_multi_rf_independent_branches(trained_multi_rf, xxt, yyt)
 
         wxxt, wyyt, _ = dataLoading.provide_test_data_concat(sub_id, option="wrist", hrv=True, eda=True, resp=False)
-        y_test_sub_2 = sub_data_wrist["Label"].values
+        y_test_sub_wrist = sub_data_wrist["Label"].values
+        X_test_sub_wrist = sub_data_wrist.drop(columns=["Label", "Subject"])
         acc_multi_rf_2, y_pred_multi_rf_2, _ = smu.predict_multi_rf_independent_branches(trained_multi_rf_2, wxxt, wyyt)
 
         print(
@@ -147,7 +168,8 @@ def main():
             'acc_multi_cnn_3': acc_multi_cnn_3,
             'acc_lstm_multi': acc_lstm_multi,
             'acc_multi_rf': acc_multi_rf,
-            'acc_multi_rf_2': acc_multi_rf_2
+            'acc_multi_rf_2': acc_multi_rf_2,
+            'acc_rf_2_cls': acc_rf_2_cls
         })
 
         # Afișarea matricelor de confuzie aferente subiectului curent
@@ -176,13 +198,20 @@ def main():
         model_names = ['Wrist RF Full', 'Wrist RF Full', 'Wrist RF Full', 'Wrist RF Full']
         plot_subject_confusion_matrices(
             sub_id,
-            y_test_sub_2,
+            y_test_sub_wrist,
             y_pred_multi_rf_2,
             y_pred_multi_rf_2,
             y_pred_multi_rf_2,
             y_pred_multi_rf_2,
             class_names,
             model_names
+        )
+        plting.plot_sub_conf_mat(
+            sub_id,
+            y_test_sub_2_cls,
+            y_pred_rf_2_cls,
+            class_names_binary,
+            model_name='RF 2 Classes'
         )
 
     # --- AFISARE REZULTATE FINALE MEDII ---
@@ -199,6 +228,7 @@ def main():
         print(f"Multi CNN: {df_results['acc_multi_cnn_3'].mean():.2f}")
         print(f"Multi LSTM: {df_results['acc_lstm_multi'].mean():.2f}")
         print(f"Multi RF: {df_results['acc_multi_rf'].mean():.2f}")
+        print(f"RF 2 classes: {df_results['acc_rf_2_cls'].mean():.2f}")
 
 
 if __name__ == "__main__":

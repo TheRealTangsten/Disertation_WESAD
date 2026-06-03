@@ -11,30 +11,19 @@ from sklearn.preprocessing import LabelEncoder
 
 # Compute relevant features
 #results = nk.bio_analyze(processed_data, sampling_rate=100)
-full_df = dataLoading.load_processed_data(json_type="chest", include_resp=True)
-print(full_df)
-print(full_df[full_df.Label==0].shape[0])
-print(full_df[full_df.Label==1].shape[0])
-print(full_df[full_df.Label==2].shape[0])
-print(set(full_df['Label']))
+full_df_binary = dataLoading.load_processed_data_binary(json_type="chest", include_resp=False)
 
+# Encodăm etichetele text în valori numerice (0, 1, 2)
 
+le2 = LabelEncoder()
+full_df_binary['Label'] = le2.fit_transform(full_df_binary['Label'])
 
+num_classes_2 = len(le2.classes_)
 
-le = LabelEncoder()
-full_df['Label'] = le.fit_transform(full_df['Label'])
-print(full_df)
-print(full_df[full_df.Label==0].shape[0])
-print(full_df[full_df.Label==1].shape[0])
-print(full_df[full_df.Label==2].shape[0])
-print(set(full_df['Label']))
-
-
-list1 =[1,2,3]
-list2 =[4,5,6]
-list3 =[7,8,9]
-list4 = list(list1,list2,list3)
-print(list4)
+print(num_classes_2)
+print(full_df_binary['Label'])
+list_vals = set(full_df_binary['Label'].values)
+print(list_vals)
 
 """
 test_matrix = [ [1,2,3], [4,5,6], [7,8,9] ]

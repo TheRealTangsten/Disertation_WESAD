@@ -5,24 +5,20 @@ import seaborn as sns
 
 
 def plot_sub_conf_mat(subject_id, y_true, y_pred, classes, model_name):
-    fig, axes = plt.subplots(1, 1, figsize=(12, 10))
+    fig, ax = plt.subplots(1, 1, figsize=(12, 10))
     fig.suptitle(f'Confusion Matrices for Subject {subject_id}', fontsize=16)
 
-    #model_names = ['Random Forest', 'CNN', 'Transformer']
-    model_names = [model_name]
-    predictions = [y_pred]
+    predictions = y_pred
 
-    axes = axes.flatten()
 
-    for i, ax in enumerate(axes):
-        cm = confusion_matrix(y_true, predictions[i])
+    cm = confusion_matrix(y_true, predictions)
 
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, ax=ax,
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, ax=ax,
                     xticklabels=classes, yticklabels=classes)
 
-        ax.set_title(f'{model_names[i]}')
-        ax.set_xlabel('Predicted Label')
-        ax.set_ylabel('True Label')
+    ax.set_title(f'{model_name}')
+    ax.set_xlabel('Predicted Label')
+    ax.set_ylabel('True Label')
 
     plt.tight_layout()
     plt.show()
