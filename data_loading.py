@@ -638,6 +638,71 @@ def provide_test_data_concat_2cls(sub_id, option = "chest", hrv = True, eda = Tr
 
     return return_X_concat, return_Y_concat, nr_datas
 
+def provide_train_data_fused(option = "chest", hrv = True, eda = True, resp = True):
+    df = load_processed_data(json_type=option,include_hrv=hrv, include_eda=eda, include_resp=resp)
+
+    le = LabelEncoder()
+    df['Label'] = le.fit_transform(df['Label'])
+    num_classes_3 = len(le.classes_)
+
+    print(f"\n[INFO] Splitting Data. Test Subjects: {TEST_SUBJECTS}")
+
+    train_data = df[~df['Subject'].isin(TEST_SUBJECTS)].copy()
+
+    X_train = train_data.drop(columns=["Label", "Subject"])
+    y_train = train_data["Label"].values
+
+
+    return X_train, y_train, num_classes_3
+
+def provide_test_data_fused(sub_id, option = "chest", hrv = True, eda = True, resp = True):
+    df = load_processed_data(json_type=option, include_hrv=hrv, include_eda=eda, include_resp=resp)
+
+    le = LabelEncoder()
+    df['Label'] = le.fit_transform(df['Label'])
+    num_classes_3 = len(le.classes_)
+    test_data = df[df['Subject'].isin(TEST_SUBJECTS)].copy()
+
+    sub_data = test_data[test_data['Subject'] == sub_id]
+
+    X_test = sub_data.drop(columns=["Label", "Subject"])
+
+    y_test = sub_data["Label"].values
+
+    return X_test, y_test
+
+def provide_train_data_fused_2cls(option = "chest", hrv = True, eda = True, resp = True):
+    df = load_processed_data_binary(json_type=option,include_hrv=hrv, include_eda=eda, include_resp=resp)
+
+    le = LabelEncoder()
+    df['Label'] = le.fit_transform(df['Label'])
+    num_classes_3 = len(le.classes_)
+
+    print(f"\n[INFO] Splitting Data. Test Subjects: {TEST_SUBJECTS}")
+
+    train_data = df[~df['Subject'].isin(TEST_SUBJECTS)].copy()
+
+    X_train = train_data.drop(columns=["Label", "Subject"])
+    y_train = train_data["Label"].values
+
+
+    return X_train, y_train, num_classes_3
+
+def provide_test_data_fused_2cls(sub_id, option = "chest", hrv = True, eda = True, resp = True):
+    df = load_processed_data_binary(json_type=option, include_hrv=hrv, include_eda=eda, include_resp=resp)
+
+    le = LabelEncoder()
+    df['Label'] = le.fit_transform(df['Label'])
+    num_classes_3 = len(le.classes_)
+    test_data = df[df['Subject'].isin(TEST_SUBJECTS)].copy()
+
+    sub_data = test_data[test_data['Subject'] == sub_id]
+
+    X_test = sub_data.drop(columns=["Label", "Subject"])
+
+    y_test = sub_data["Label"].values
+
+    return X_test, y_test
 
 
 

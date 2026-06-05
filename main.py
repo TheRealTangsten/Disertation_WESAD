@@ -63,13 +63,13 @@ def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y
 def main():
     print("Loading preprocessed data from JSON...")
     #######################################################################################################################################
-    full_df = dataLoading.load_processed_data(json_type="chest", include_resp=False)
+    df_chest_hrv_eda = dataLoading.load_processed_data(json_type="chest", include_resp=False)
     full_df_wrist = dataLoading.load_processed_data(json_type="wrist", include_resp=False)
     full_df_binary = dataLoading.load_processed_data_binary(json_type="chest", include_resp=False)
 
     # Encodăm etichetele text în valori numerice (0, 1, 2)
     le = LabelEncoder()
-    full_df['Label'] = le.fit_transform(full_df['Label'])
+    df_chest_hrv_eda['Label'] = le.fit_transform(df_chest_hrv_eda['Label'])
     full_df_wrist['Label'] = le.fit_transform(full_df_wrist['Label'])
 
     le2 = LabelEncoder()
@@ -80,8 +80,8 @@ def main():
 
     # SPLIT DATE: SUBIECȚI ANTRENARE vs SUBIECȚI TEST
     print(f"\n[INFO] Splitting Data. Test Subjects: {TEST_SUBJECTS}")
-    test_data_all = full_df[full_df['Subject'].isin(TEST_SUBJECTS)].copy()
-    train_data_all = full_df[~full_df['Subject'].isin(TEST_SUBJECTS)].copy()
+    test_data_chest_hrv_eda = df_chest_hrv_eda[df_chest_hrv_eda['Subject'].isin(TEST_SUBJECTS)].copy()
+    train_data_chest_hrv_eda = df_chest_hrv_eda[~df_chest_hrv_eda['Subject'].isin(TEST_SUBJECTS)].copy()
 
     test_data_all_2_cls = full_df_binary[full_df_binary['Subject'].isin(TEST_SUBJECTS)].copy()
     train_data_all_2_cls =  full_df_binary[~full_df_binary['Subject'].isin(TEST_SUBJECTS)].copy()
@@ -90,24 +90,30 @@ def main():
     #train_data_all_wrist = full_df_wrist[~full_df_wrist['Subject'].isin(TEST_SUBJECTS)].copy()
 
     # Separăm feature-urile de label/subiect pentru setul de train
-    X_train = train_data_all.drop(columns=["Label", "Subject"])
+    X_train_chest_hrv_eda = train_data_chest_hrv_eda.drop(columns=["Label", "Subject"])
     X_train_2_cls = train_data_all_2_cls.drop(columns=["Label", "Subject"])
 
-    y_train = train_data_all["Label"].values
+    y_train = train_data_chest_hrv_eda["Label"].values
     y_train_2_cls = train_data_all_2_cls["Label"].values
 
 
-    print(f"Training Data Size: {len(X_train)} samples")
+    print(f"Training Data Size: {len(X_train_chest_hrv_eda)} samples")
     #######################################################################################################################################
-    # --- ANTRENARE INDIVIDUALĂ CU NOILE FUNCTII ---
     models_to_train = ['RF', 'CNN', 'TRANS', 'LSTM']
-    trained_models = {}
+    trained_models_chest_hrv_eda = {}
+    trained_models_chest_full = {}
 
+
+    X_train_model, Y_test_model, num_cls = dataLoading.provide_train_data_fused(option = "chest", hrv = True, eda = True, resp = False)
     #Classic Train: RF, CNN, TRANS, LSTM
     for m_name in models_to_train:
-        trained_models[m_name] = smu.train_model(X_train, y_train, num_classes_3, m_name)
+        #trained_models_chest_hrv_eda[m_name] = smu.train_model(X_train_chest_hrv_eda, y_train, num_classes_3, m_name)
+        trained_models_chest_hrv_eda[m_name] = smu.train_model(X_train_model, Y_test_model, num_cls, m_name)
 
-    RF_2_cls = smu.train_model(X_train_2_cls, y_train_2_cls, num_classes_2, 'RF')
+    X_train_binary, Y_train_binary, num_cls_binary =  dataLoading.provide_train_data_fused_2cls(option="chest", resp=False)
+    #RF_2_cls = smu.train_model(X_train_2_cls, y_train_2_cls, num_classes_2, 'RF')
+    RF_2_cls = smu.train_model(X_train_binary, Y_train_binary, num_cls_binary, 'RF')
+
 
     xt3_chest_hrv_eda, yt3_chest_hrv_eda, _ = dataLoading.provide_train_data_concat(option = "chest", hrv = True, eda = True, resp = False)
     trained_multi_cnn_chest_3cls_hrv_eda = smu.train_multi_branch_by_vector_count(xt3_chest_hrv_eda, yt3_chest_hrv_eda, num_classes_3)
@@ -142,7 +148,7 @@ def main():
     results_decision_fusion = []
 
     for sub_id in TEST_SUBJECTS:
-        sub_data = test_data_all[test_data_all['Subject'] == sub_id]
+        sub_data = test_data_chest_hrv_eda[test_data_chest_hrv_eda['Subject'] == sub_id]
         sub_data_wrist = test_data_all_wrist[test_data_all_wrist['Subject'] == sub_id]
 
         sub_data_2_cls = test_data_all_2_cls[test_data_all_2_cls['Subject'] == sub_id]
@@ -156,12 +162,19 @@ def main():
 
         y_test_sub_3_cls = sub_data["Label"].values
         y_test_sub_2_cls = sub_data_2_cls["Label"].values
+        X_test_sub_2_cls, y_test_sub_2_cls = dataLoading.provide_test_data_fused_2cls(sub_id=sub_id, option="chest", resp=False)
 
+        X_test_sub_chest_hrv_eda_3_cls, y_test_sub_chest_hrv_eda_3_cls = dataLoading.provide_test_data_fused(sub_id, option="chest", hrv=True, eda=True, resp=False)
         # Classic Test: RF, CNN, TRANS, LSTM
-        acc_rf, y_pred_rf = smu.predict_model(trained_models['RF'], X_test_sub_3_cls, y_test_sub_3_cls, 'RF')
-        acc_cnn, y_pred_cnn = smu.predict_model(trained_models['CNN'], X_test_sub_3_cls, y_test_sub_3_cls, 'CNN')
-        acc_trans, y_pred_trans = smu.predict_model(trained_models['TRANS'], X_test_sub_3_cls, y_test_sub_3_cls, 'TRANS')
-        acc_lstm, y_pred_lstm = smu.predict_model(trained_models['LSTM'], X_test_sub_3_cls, y_test_sub_3_cls, 'LSTM')
+        #acc_rf, y_pred_rf = smu.predict_model(trained_models_chest_hrv_eda['RF'], X_test_sub_3_cls, y_test_sub_3_cls, 'RF')
+        #acc_cnn, y_pred_cnn = smu.predict_model(trained_models_chest_hrv_eda['CNN'], X_test_sub_3_cls, y_test_sub_3_cls, 'CNN')
+        #acc_trans, y_pred_trans = smu.predict_model(trained_models_chest_hrv_eda['TRANS'], X_test_sub_3_cls, y_test_sub_3_cls, 'TRANS')
+        #acc_lstm, y_pred_lstm = smu.predict_model(trained_models_chest_hrv_eda['LSTM'], X_test_sub_3_cls, y_test_sub_3_cls, 'LSTM')
+
+        acc_rf, y_pred_rf = smu.predict_model(trained_models_chest_hrv_eda['RF'], X_test_sub_chest_hrv_eda_3_cls, y_test_sub_chest_hrv_eda_3_cls, 'RF')
+        acc_cnn, y_pred_cnn = smu.predict_model(trained_models_chest_hrv_eda['CNN'], X_test_sub_chest_hrv_eda_3_cls, y_test_sub_chest_hrv_eda_3_cls, 'CNN')
+        acc_trans, y_pred_trans = smu.predict_model(trained_models_chest_hrv_eda['TRANS'], X_test_sub_chest_hrv_eda_3_cls, y_test_sub_chest_hrv_eda_3_cls, 'TRANS')
+        acc_lstm, y_pred_lstm = smu.predict_model(trained_models_chest_hrv_eda['LSTM'], X_test_sub_chest_hrv_eda_3_cls, y_test_sub_chest_hrv_eda_3_cls, 'LSTM')
 
         acc_rf_2_cls, y_pred_rf_2_cls = smu.predict_model(RF_2_cls, X_test_sub_2_cls, y_test_sub_2_cls, 'RF')
 
@@ -288,7 +301,7 @@ def main():
         print(f"Multi CNN: {df_results_model_fusion['acc_multi_cnn_chest_3cls_hrv_eda'].mean():.2f}")
         print(f"Multi LSTM: {df_results_model_fusion['acc_multi_lstm_chest_3cls_hrv_eda'].mean():.2f}")
         #print(f"Multi RF: {df_results['acc_multi_rf'].mean():.2f}")
-        #print(f"RF 2 classes: {df_results['acc_rf_2_cls'].mean():.2f}")
+        print(f"RF 2 classes: {df_results['acc_rf_2_cls'].mean():.2f}")
     list_raw_preds = [raw_pred_multi_cnn_3_chest_3cls_hrv_eda, raw_pred_lstm_multi_chest_3cls_hrv_eda]
     acc_res, preds_res, raw_res = smu.combine_results_multiple_models(list_raw_preds, yyt3_chest_hrv_eda)
     print(f"Y List chest full: {yyt3_chest_full}")
