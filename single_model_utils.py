@@ -224,7 +224,7 @@ def predict_multi_branch_by_vector_count(model, X_test, y_test):
         y_pred = np.zeros_like(y_test_arr)
         acc = 0.0
 
-    return acc, y_pred
+    return acc, y_pred, probs
 
 
 def train_multi_branch_lstm_by_vector_count(X_list, y_list, num_classes, epochs=30, batch_size=32,
@@ -300,12 +300,8 @@ def predict_multi_branch_lstm_by_vector_count(model, X_list, y_list):
     # Calcul acuratețe scurt și curat
     acc = accuracy_score(y_test, y_pred)
 
-    return acc, y_pred
+    return acc, y_pred, probs
 
-
-import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
 
 
 def train_multi_rf_independent_branches(X_list, y_list, num_classes=3, n_estimators=100, class_weights_dict=None):
@@ -379,3 +375,14 @@ def predict_multi_rf_independent_branches(models_list, X_list, y_list):
     acc = accuracy_score(y_test, y_pred)
 
     return acc, y_pred, avg_probs
+
+
+def combine_results_multiple_models(list_raw_preds, y_list):
+    raws_avg = sum(list_raw_preds)/len(list_raw_preds)
+    preds = np.argmax(raws_avg, axis=1)
+    y_test = y_list[0]
+    #print(f"Y Test: {y_test}")
+    #print(f"Y List: {y_list}")
+    acc = accuracy_score(y_test, preds)
+
+    return acc, preds, raws_avg
