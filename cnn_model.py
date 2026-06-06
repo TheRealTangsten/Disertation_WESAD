@@ -6,8 +6,10 @@ from keras.optimizers import Adam
 def build_cnn_model(input_shape, num_classes):
     model = Sequential()
     model.add(Input(shape=input_shape))
-    model.add(Conv1D(filters=64, kernel_size=3, activation='relu'))
-    model.add(MaxPooling1D(pool_size=2))
+    model.add(Conv1D(filters=64, kernel_size=3, activation='relu', padding='same'))
+
+    pool_size = 2 if input_shape[0] >= 2 else 1
+    model.add(MaxPooling1D(pool_size=pool_size))
     model.add(Dropout(0.2))
     model.add(Flatten())
     model.add(Dense(50, activation='relu'))

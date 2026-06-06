@@ -99,11 +99,13 @@ def predict_model(model, X_test, y_test, model_name):
     Returnează acuratețea și vectorul de predicții (y_pred).
     """
     BATCH_SIZE = 32
+    raw_preds = 0
 
     # 1. Predicție Random Forest
     if model_name == 'RF':
         y_pred = model.predict(X_test)
         acc = accuracy_score(y_test, y_pred)
+        raw_preds = y_pred
 
     # 3. Predicție Deep Learning Standard (Single-Branch)
     elif model_name in ['CNN', 'TRANS', 'LSTM']:
@@ -112,6 +114,7 @@ def predict_model(model, X_test, y_test, model_name):
         test_dataset = test_dataset.batch(BATCH_SIZE, drop_remainder=False)
 
         probs = model.predict(test_dataset, verbose=0)
+        raw_preds = probs
 
         if len(probs) > 0:
             y_pred = np.argmax(probs, axis=1)
@@ -123,7 +126,7 @@ def predict_model(model, X_test, y_test, model_name):
     else:
         raise ValueError(f"Modelul '{model_name}' nu este recunoscut.")
 
-    return acc, y_pred
+    return acc, y_pred, raw_preds
 
 
 
@@ -380,9 +383,11 @@ def predict_multi_rf_independent_branches(models_list, X_list, y_list):
 def combine_results_multiple_models(list_raw_preds, y_list):
     raws_avg = sum(list_raw_preds)/len(list_raw_preds)
     preds = np.argmax(raws_avg, axis=1)
-    y_test = y_list[0]
-    #print(f"Y Test: {y_test}")
-    #print(f"Y List: {y_list}")
+    y_intermediary = np.asarray(y_list)
+    print(f"{y_intermediary.shape} - {len(y_intermediary.shape)}")
+    y_test = y_list if len(y_intermediary.shape) == 1 else y_list[0]
+    print(f"Y Test: {y_test}")
+    print(f"Y List: {y_list}")
     acc = accuracy_score(y_test, preds)
 
     return acc, preds, raws_avg

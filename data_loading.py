@@ -457,22 +457,22 @@ def provide_train_data_concat(option = "chest", hrv = True, eda = True, resp = T
         init_call_provide_test_train = False
         dlc.prepare_train_test_data()
 
-    nr_cls = 0
+    nr_datas = 0
     return_X_train_data = []
     return_Y_train_data = []
     if option == "chest":
         if hrv == True:
             return_X_train_data.append(dlc.chest_hrv_X_train)
             return_Y_train_data.append(dlc.chest_hrv_Y_train)
-            nr_cls = nr_cls + 1
+            nr_datas = nr_datas + 1
         if eda == True:
             return_X_train_data.append(dlc.chest_eda_X_train)
             return_Y_train_data.append(dlc.chest_eda_Y_train)
-            nr_cls = nr_cls + 1
+            nr_datas = nr_datas + 1
         if resp == True:
             return_X_train_data.append(dlc.chest_resp_X_train)
             return_Y_train_data.append(dlc.chest_resp_Y_train)
-            nr_cls = nr_cls + 1
+            nr_datas = nr_datas + 1
 
     if option == "wrist":
         resp = False
@@ -480,13 +480,13 @@ def provide_train_data_concat(option = "chest", hrv = True, eda = True, resp = T
         if hrv == True:
             return_X_train_data.append(dlc.wrist_hrv_X_train)
             return_Y_train_data.append(dlc.wrist_hrv_Y_train)
-            nr_cls = nr_cls + 1
+            nr_datas = nr_datas + 1
         if eda == True:
             return_X_train_data.append(dlc.wrist_eda_X_train)
             return_Y_train_data.append(dlc.wrist_eda_Y_train)
-            nr_cls = nr_cls + 1
+            nr_datas = nr_datas + 1
 
-    return return_X_train_data, return_Y_train_data, nr_cls
+    return return_X_train_data, return_Y_train_data, nr_datas
 
 def provide_test_data_concat(sub_id, option = "chest", hrv = True, eda = True, resp = True):
 
