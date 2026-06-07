@@ -36,6 +36,9 @@ TEST_SUBJECTS = ['S15', 'S16', 'S17']
 class_names = ['Baseline', 'Stress', 'Amusement']
 class_names_binary = ['No Stress', 'Stress']
 
+notation_cf = "Chest - HRV, EDA, RESP"
+notation_che = "Chest - HRV, EDA"
+notation_w = "Wrist - HRV, EDA"
 
 # Funcția grafică păstrată din scriptul original
 def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y_pred_trans, y_pred_lstm, classes, model_names = ['Random Forest', 'CNN', 'Transformer', 'LSTM']):
@@ -58,7 +61,6 @@ def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y
     plt.show()
 
 
-# -------------------- Pipeline Execuție --------------------
 
 def main():
     print("Loading preprocessed data from JSON...")
@@ -176,6 +178,10 @@ def main():
     results_2cls_chest_full = []
     results_2cls_wrist_full =[]
 
+    results_fdf_chest_full = []
+    results_fdf_chest_hrv_eda = []
+    results_fdf_wrist = []
+
     for sub_id in TEST_SUBJECTS:
         _, y_test_sub_chest_3_cls = dataLoading.provide_test_data_fused(sub_id=sub_id, option="chest")
         _, y_test_sub_wrist_3_cls = dataLoading.provide_test_data_fused(sub_id=sub_id, option="wrist")
@@ -188,24 +194,24 @@ def main():
 
         # RF, CNN, TRANS, LSTM - chest - hrv eda
         X_test_sub_chest_hrv_eda_3_cls, y_test_sub_chest_hrv_eda_3_cls = dataLoading.provide_test_data_fused(sub_id, option="chest", hrv=True, eda=True, resp=False)
-        acc_rf_3cls_chest_hrv_eda, y_pred_rf_3cls_chest_hrv_eda, _ = smu.predict_model(trained_models_chest_hrv_eda['RF'], X_test_sub_chest_hrv_eda_3_cls, y_test_sub_chest_hrv_eda_3_cls, 'RF')
-        acc_cnn_3cls_chest_hrv_eda, y_pred_cnn_3cls_chest_hrv_eda, _ = smu.predict_model(trained_models_chest_hrv_eda['CNN'], X_test_sub_chest_hrv_eda_3_cls, y_test_sub_chest_hrv_eda_3_cls, 'CNN')
+        acc_rf_3cls_chest_hrv_eda, y_pred_rf_3cls_chest_hrv_eda, raw_pred_rf_3cls_chest_hrv_eda = smu.predict_model(trained_models_chest_hrv_eda['RF'], X_test_sub_chest_hrv_eda_3_cls, y_test_sub_chest_hrv_eda_3_cls, 'RF')
+        acc_cnn_3cls_chest_hrv_eda, y_pred_cnn_3cls_chest_hrv_eda, raw_pred_cnn_3cls_chest_hrv_eda = smu.predict_model(trained_models_chest_hrv_eda['CNN'], X_test_sub_chest_hrv_eda_3_cls, y_test_sub_chest_hrv_eda_3_cls, 'CNN')
         acc_trans_3cls_chest_hrv_eda, y_pred_trans_3cls_chest_hrv_eda, _ = smu.predict_model(trained_models_chest_hrv_eda['TRANS'], X_test_sub_chest_hrv_eda_3_cls, y_test_sub_chest_hrv_eda_3_cls, 'TRANS')
         acc_lstm_3cls_chest_hrv_eda, y_pred_lstm_3cls_chest_hrv_eda, _ = smu.predict_model(trained_models_chest_hrv_eda['LSTM'], X_test_sub_chest_hrv_eda_3_cls, y_test_sub_chest_hrv_eda_3_cls, 'LSTM')
 
-        # RF, CNN, TRANS, LSTM - chest - hrv eda
+        # RF, CNN, TRANS, LSTM - chest - full
         x_test_sub_chest_full_3cls, y_test_sub_chest_full_3cls = dataLoading.provide_test_data_fused(sub_id, option="chest", hrv=True, eda=True, resp=True)
-        acc_rf_3cls_chest_full, y_pred_rf_3cls_chest_full, _ = smu.predict_model(trained_models_chest_full['RF'],x_test_sub_chest_full_3cls, y_test_sub_chest_full_3cls, 'RF' )
-        acc_cnn_3cls_chest_full, y_pred_cnn_3cls_chest_full, _ = smu.predict_model(trained_models_chest_full['CNN'],x_test_sub_chest_full_3cls, y_test_sub_chest_full_3cls, 'CNN')
+        acc_rf_3cls_chest_full, y_pred_rf_3cls_chest_full, raw_pred_rf_3cls_chest_full = smu.predict_model(trained_models_chest_full['RF'],x_test_sub_chest_full_3cls, y_test_sub_chest_full_3cls, 'RF' )
+        acc_cnn_3cls_chest_full, y_pred_cnn_3cls_chest_full, raw_pred_cnn_3cls_chest_full = smu.predict_model(trained_models_chest_full['CNN'],x_test_sub_chest_full_3cls, y_test_sub_chest_full_3cls, 'CNN')
         acc_trans_3cls_chest_full, y_pred_trans_3cls_chest_full, _ = smu.predict_model(trained_models_chest_full['TRANS'],x_test_sub_chest_full_3cls, y_test_sub_chest_full_3cls, 'TRANS')
         acc_lstm_3cls_chest_full, y_pred_lstm_3cls_chest_full, _ = smu.predict_model(trained_models_chest_full['LSTM'],x_test_sub_chest_full_3cls, y_test_sub_chest_full_3cls, 'LSTM')
 
         # RF, CNN, TRANS, LSTM - wrist - full
         x_test_sub_wrist_full_3cls, y_test_sub_wrist_full_3cls = dataLoading.provide_test_data_fused(sub_id, option="wrist", hrv=True, eda=True)
-        acc_rf_3cls_wrist_full, y_pred_rf_3cls_wrist_full, _ = smu.predict_model(trained_models_wrist_full['RF'], x_test_sub_wrist_full_3cls, y_test_sub_wrist_full_3cls, 'RF')
+        acc_rf_3cls_wrist_full, y_pred_rf_3cls_wrist_full, raw_pred_rf_3cls_wrist_full = smu.predict_model(trained_models_wrist_full['RF'], x_test_sub_wrist_full_3cls, y_test_sub_wrist_full_3cls, 'RF')
         acc_cnn_3cls_wrist_full, y_pred_cnn_3cls_wrist_full, _ = smu.predict_model(trained_models_wrist_full['CNN'], x_test_sub_wrist_full_3cls, y_test_sub_wrist_full_3cls, 'CNN')
         acc_trans_3cls_wrist_full, y_pred_trans_3cls_wrist_full, _ = smu.predict_model(trained_models_wrist_full['TRANS'], x_test_sub_wrist_full_3cls, y_test_sub_wrist_full_3cls, 'TRANS')
-        acc_lstm_3cls_wrist_full, y_pred_lstm_3cls_wrist_full, _ = smu.predict_model(trained_models_wrist_full['LSTM'], x_test_sub_wrist_full_3cls, y_test_sub_wrist_full_3cls, 'LSTM')
+        acc_lstm_3cls_wrist_full, y_pred_lstm_3cls_wrist_full, raw_pred_LSTM_wrist_full = smu.predict_model(trained_models_wrist_full['LSTM'], x_test_sub_wrist_full_3cls, y_test_sub_wrist_full_3cls, 'LSTM')
 
         ############  ----------------------------- ################### -----------------------------  ############
 
@@ -215,7 +221,7 @@ def main():
 
         ## CNN, LSTM specializat RESPIBAN - Full - 3 cls
         xxt3_chest_full, yyt3_chest_full, _ = dataLoading.provide_test_data_concat(sub_id, option="chest", hrv=True,eda=True, resp=True)
-        acc_multi_cnn_chest_3cls_full, y_pred_multi_cnn_chest_3cls_full, _ = smu.predict_multi_branch_by_vector_count(
+        acc_multi_cnn_chest_3cls_full, y_pred_multi_cnn_chest_3cls_full, raw_pred_multi_cnn_3cls_chest_full = smu.predict_multi_branch_by_vector_count(
             multi_CNN_3cls_chest_full, xxt3_chest_full, yyt3_chest_full)
         acc_multi_lstm_chest_3cls_full, y_pred_multi_lstm_chest_3cls_full, _ = smu.predict_multi_branch_lstm_by_vector_count(
             multi_LSTM_3cls_chest_full, xxt3_chest_full, yyt3_chest_full)
@@ -225,7 +231,7 @@ def main():
 
         #CNN, LSTM specializat RESPIBAN - hrv/eda - 3 cls
         xxt3_chest_hrv_eda, yyt3_chest_hrv_eda, _ = dataLoading.provide_test_data_concat(sub_id, option="chest",hrv=True, eda=True, resp=False)
-        acc_multi_cnn_chest_3cls_hrv_eda, y_pred_multi_cnn_3_chest_3cls_hrv_eda, raw_pred_multi_cnn_3_chest_3cls_hrv_eda = smu.predict_multi_branch_by_vector_count(
+        acc_multi_cnn_chest_3cls_hrv_eda, y_pred_multi_cnn_chest_3cls_hrv_eda, raw_pred_multi_cnn_3cls_chest_hrv_eda = smu.predict_multi_branch_by_vector_count(
             multi_CNN_3cls_chest_hrv_eda, xxt3_chest_hrv_eda, yyt3_chest_hrv_eda)
         acc_multi_lstm_chest_3cls_hrv_eda, y_pred_lstm_multi_chest_3cls_hrv_eda, raw_pred_lstm_multi_chest_3cls_hrv_eda = smu.predict_multi_branch_lstm_by_vector_count(
             multi_LSTM_3cls_chest_hrv_eda, xxt3_chest_hrv_eda, yyt3_chest_hrv_eda)
@@ -239,7 +245,7 @@ def main():
         acc_multi_lstm_wrist_3cls_full, y_pred_multi_lstm_wrist_3cls_full, _ = smu.predict_multi_branch_lstm_by_vector_count(multi_LSTM_3cls_wrist_full, xxt3_wrist_full, yyt3_wrist_full)
 
         # RF specializat Empatica E4 - Full - 3 cls
-        acc_multi_rf_3cls_wrist, y_pred_multi_rf_3cls_wrist_full, _ = smu.predict_multi_rf_independent_branches(multi_RF_3cls_wrist_full, xxt3_wrist_full, yyt3_wrist_full)
+        acc_multi_rf_3cls_wrist, y_pred_multi_rf_3cls_wrist_full, raw_pred_multi_rf_3cls_wrist_full = smu.predict_multi_rf_independent_branches(multi_RF_3cls_wrist_full, xxt3_wrist_full, yyt3_wrist_full)
 
         #onesig CNN - chest - full + hrv/eda
         xxt3_chest_hrv, yyt3_chest_hrv = dataLoading.provide_test_data_fused(sub_id, option="chest", hrv=True, eda =False, resp=False)
@@ -278,30 +284,70 @@ def main():
         acc_onesig_LSTM_wrist_eda, y_pred_onesig_LSTM_wrist_eda, raw_pred_LSTM_wrist_eda = smu.predict_model(onesig_LSTM_wrist_eda, xxt3_wrist_eda, yyt3_wrist_eda, 'LSTM')
 
         list_raw_preds_onesig_LSTM_wrist = [raw_pred_LSTM_wrist_hrv, raw_pred_LSTM_wrist_eda]
-        acc_onesig_LSTM_wrist, y_pred_onesig_LSTM_wrist, _ = smu.combine_results_multiple_models(list_raw_preds_onesig_LSTM_wrist, yyt3_wrist_hrv)
+        acc_onesig_LSTM_wrist, y_pred_onesig_LSTM_wrist, raw_preds_onesig_LSTM_wrist = smu.combine_results_multiple_models(list_raw_preds_onesig_LSTM_wrist, yyt3_wrist_hrv)
 
         ###### ---------------------  2 CLASSES   --------------------- ######
 
         # Normal RF, Multi CNN - chest - full
         xt2_chest_full_fused, yt2_chest_full_fused = dataLoading.provide_test_data_fused_2cls(sub_id, option="chest", hrv=True, eda=True, resp=True)
         xt2_chest_full_concat, yt2_chest_full_concat, _ = dataLoading.provide_test_data_concat_2cls(sub_id, option="chest", hrv=True, eda=True, resp=True)
-        acc_RF_2cls_chest_full, y_pred_RF_2cls_chest_full, _ = smu.predict_model(RF_2cls_chest_full, xt2_chest_full_fused, yt2_chest_full_fused, 'RF')
-        acc_multi_CNN_2cls_chest_full, y_pred_multi_CNN_2cls_chest_full, _ = smu.predict_multi_branch_by_vector_count(multi_CNN_2cls_chest_full, xt2_chest_full_concat, yt2_chest_full_concat)
+        acc_RF_2cls_chest_full, y_pred_RF_2cls_chest_full, raw_pred_rf_2cls_chest_full = smu.predict_model(RF_2cls_chest_full, xt2_chest_full_fused, yt2_chest_full_fused, 'RF')
+        acc_multi_CNN_2cls_chest_full, y_pred_multi_CNN_2cls_chest_full, raw_pred_cnn_2cls_chest_full = smu.predict_multi_branch_by_vector_count(multi_CNN_2cls_chest_full, xt2_chest_full_concat, yt2_chest_full_concat)
 
         # Normal RF, Normal CNN - chest - hrv eda
         xt2_chest_hrv_eda_fused, yt2_chest_hrv_eda_fused = dataLoading.provide_test_data_fused_2cls(sub_id, option="chest", hrv=True, eda=True, resp=False)
-        acc_RF_2cls_chest_hrv_eda, y_pred_RF_2cls_chest_hrv_eda, _ = smu.predict_model(RF_2cls_chest_hrv_eda, xt2_chest_hrv_eda_fused, yt2_chest_hrv_eda_fused, 'RF')
-        acc_CNN_2cls_chest_hrv_eda, y_pred_CNN_2cls_chest_hrv_eda, _ = smu.predict_model(CNN_2cls_chest_hrv_eda, xt2_chest_hrv_eda_fused, yt2_chest_hrv_eda_fused, 'CNN')
+        acc_RF_2cls_chest_hrv_eda, y_pred_RF_2cls_chest_hrv_eda, raw_pred_rf_2cls_chest_hrv_eda = smu.predict_model(RF_2cls_chest_hrv_eda, xt2_chest_hrv_eda_fused, yt2_chest_hrv_eda_fused, 'RF')
+        acc_CNN_2cls_chest_hrv_eda, y_pred_CNN_2cls_chest_hrv_eda, raw_pred_cnn_2cls_chest_hrv_eda = smu.predict_model(CNN_2cls_chest_hrv_eda, xt2_chest_hrv_eda_fused, yt2_chest_hrv_eda_fused, 'CNN')
 
         #Multi RF, Normal LSTM - wrist
         xt2_wrist_fused, yt2_wrist_fused = dataLoading.provide_test_data_fused_2cls(sub_id, option="wrist", hrv=True, eda=True)
         xt2_wrist_concat, yt2_wrist_concat, _ = dataLoading.provide_test_data_concat_2cls(sub_id, option="wrist", hrv=True, eda=True)
-        acc_multi_RF_2cls_wrist_full, y_pred_multi_RF_2cls_wrist_full, _ = smu.predict_multi_rf_independent_branches(multi_RF_2cls_wrist_full, xt2_wrist_concat, yt2_wrist_concat)
+        acc_multi_RF_2cls_wrist_full, y_pred_multi_RF_2cls_wrist_full, raw_pred_multi_RF_2cls_wrist_full = smu.predict_multi_rf_independent_branches(multi_RF_2cls_wrist_full, xt2_wrist_concat, yt2_wrist_concat)
         acc_LSTM_2cls_wrist_full, y_pred_LSTM_2cls_wrist_full, _ = smu.predict_model(LSTM_2cls_wrist_full, xt2_wrist_fused, yt2_wrist_fused,'LSTM')
 
-        ###### ---------------------  ######   --------------------- ######
-        #print(f"\n  Result {sub_id}: RF={acc_rf_3cls_chest_hrv_eda:.2f}, CNN={acc_cnn_3cls_chest_hrv_eda:.2f}, Transformer={acc_trans_3cls_chest_hrv_eda:.2f}, LSTM={acc_lstm_3cls_chest_hrv_eda:.2f}")
+        ###### ---------------------  ############   --------------------- ######
 
+
+        ###### ---------------------  FINAL PER DATASET FUSION   --------------------- ######
+
+        # Chest - FULL
+        # Max acc: normal RF + Multi CNN
+        list_raw_max_acc_chest_full = [raw_pred_rf_3cls_chest_full, raw_pred_multi_cnn_3cls_chest_full]
+        acc_max_acc_chest_full, y_pred_max_acc_chest_full, _ = smu.combine_results_multiple_models(list_raw_max_acc_chest_full, y_test_sub_chest_full_3cls)
+        # Class combo: normal RF + 2 cls RF
+        list_raw_class_combo_chest_full = [raw_pred_rf_3cls_chest_full, raw_pred_rf_2cls_chest_full]
+        acc_class_combo_chest_full, y_pred_class_combo_chest_full, _ = smu.combine_results_single_3cls_plus_2cls(raw_pred_rf_3cls_chest_full, raw_pred_rf_2cls_chest_full, y_test_sub_chest_full_3cls)
+        # DL var: normal CNN + multi CNN
+        list_raw_dl_var_chest_full = [raw_pred_cnn_3cls_chest_full, raw_pred_multi_cnn_3cls_chest_full]
+        # acc_dl_var_chest_full, y_pred_dl_var_chest_full, _ = smu.combine_results_multiple_models(list_raw_dl_var_chest_full, y_test_sub_chest_full_3cls)
+        acc_dl_var_chest_full, y_pred_dl_var_chest_full, _ = smu.combine_results_single_3cls_plus_2cls(raw_pred_cnn_3cls_chest_full, raw_pred_cnn_2cls_chest_full, y_test_sub_chest_full_3cls)
+
+        # Chest - hrv/eda
+        # Max acc: normal RF + Multi CNN
+        list_raw_max_acc_chest_hrv_eda = [raw_pred_rf_3cls_chest_hrv_eda, raw_pred_multi_cnn_3cls_chest_hrv_eda]
+        acc_max_acc_chest_hrv_eda, y_pred_max_acc_chest_hrv_eda, _ = smu.combine_results_multiple_models(list_raw_max_acc_chest_hrv_eda, y_test_sub_chest_hrv_eda_3_cls)
+        # Class combo: normal RF + 2 cls RF
+        list_raw_class_combo_chest_hrv_eda = [raw_pred_rf_3cls_chest_hrv_eda, raw_pred_rf_2cls_chest_hrv_eda]
+        acc_class_combo_chest_hrv_eda, y_pred_class_combo_chest_hrv_eda, _ = smu.combine_results_single_3cls_plus_2cls(
+            raw_pred_rf_3cls_chest_hrv_eda, raw_pred_rf_2cls_chest_hrv_eda, y_test_sub_chest_hrv_eda_3_cls)
+        # DL var: normal CNN + 2cls CNN
+        list_raw_dl_var_chest_hrv_eda = []
+        acc_dl_var_chest_hrv_eda, y_pred_dl_var_chest_hrv_eda, _ = smu.combine_results_single_3cls_plus_2cls(
+            raw_pred_cnn_3cls_chest_hrv_eda, raw_pred_cnn_2cls_chest_hrv_eda, y_test_sub_chest_hrv_eda_3_cls)
+
+        # Wrist - FULL
+        # Max acc: normal RF + Multi CNN
+        list_raw_max_acc_wrist = [raw_pred_LSTM_wrist_full, raw_pred_multi_rf_3cls_wrist_full]
+        acc_max_acc_wrist, y_pred_max_acc_wrist, _ = smu.combine_results_multiple_models(list_raw_max_acc_wrist,y_test_sub_wrist_3_cls)
+        # Class combo: normal RF + 2 cls RF
+        list_raw_class_combo_wrist = []
+        acc_class_combo_wrist, y_pred_class_combo_wrist, _ = smu.combine_results_single_3cls_plus_2cls(raw_pred_multi_rf_3cls_wrist_full, raw_pred_multi_RF_2cls_wrist_full, y_test_sub_wrist_3_cls)
+        # DL var: normal CNN + multi CNN
+        list_raw_dl_var_wrist = [raw_pred_LSTM_wrist_full, raw_preds_onesig_LSTM_wrist]
+        acc_dl_var_wrist, y_pred_dl_var_wrist, _ = smu.combine_results_multiple_models(list_raw_dl_var_wrist, y_test_sub_wrist_3_cls)
+
+
+        ###### ---------------------  ############   --------------------- ######
         # RESULTS
         #NORMAL
         results_3cls_chest_hrv_eda.append({
@@ -361,6 +407,8 @@ def main():
             'acc_LSTM_wrist': acc_onesig_LSTM_wrist,
         })
 
+
+
         ###### ---------------------  2 CLASSES   --------------------- ######
         results_2cls_chest_full.append({
             'subject': sub_id,
@@ -379,30 +427,98 @@ def main():
         })
         ###### ---------------------  ######   --------------------- ######
 
+        # Final per dataset fusion
+
+        results_fdf_chest_full.append({
+            'subject': sub_id,
+            'max_acc': acc_max_acc_chest_full,
+            'class_combo': acc_class_combo_chest_full,
+            'dl_var': acc_dl_var_chest_full
+        })
+
+        results_fdf_chest_hrv_eda.append({
+            'subject': sub_id,
+            'max_acc': acc_max_acc_chest_hrv_eda,
+            'class_combo': acc_class_combo_chest_hrv_eda,
+            'dl_var': acc_dl_var_chest_hrv_eda
+        })
+        results_fdf_wrist.append({
+            'subject': sub_id,
+            'max_acc': acc_max_acc_wrist,
+            'class_combo': acc_class_combo_wrist,
+            'dl_var': acc_dl_var_wrist
+        })
         ###########  --------------- CONFUSION MATRICES ---------------  ###########
         print(f"  Displaying Confusion Matrices for {sub_id}...")
         skip_plots = True
         if skip_plots:
             print("skipped plots")
         else:
-            # normal models, chest - hrv eda
-            plot_subject_confusion_matrices(
+            # normal models
+            #chest - full
+
+            plting.plot_subject_confusion_matrices_2col(
                 sub_id,
                 y_test_sub_chest_3_cls,
+                y_pred_rf_3cls_chest_full,
+                y_pred_cnn_3cls_chest_full,
+                class_names,
+                notation=notation_cf
+            )
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_chest_3_cls,
+                y_pred_trans_3cls_chest_full,
+                y_pred_lstm_3cls_chest_full,
+                class_names,
+                notation=notation_cf
+            )
+            #chest - hrv eda
+
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_chest_hrv_eda_3_cls,
                 y_pred_rf_3cls_chest_hrv_eda,
                 y_pred_cnn_3cls_chest_hrv_eda,
+                class_names,
+                notation=notation_che
+            )
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_chest_hrv_eda_3_cls,
                 y_pred_trans_3cls_chest_hrv_eda,
                 y_pred_lstm_3cls_chest_hrv_eda,
-                class_names
+                class_names,
+                notation=notation_che
             )
+            #wrist
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_wrist_3_cls,
+                y_pred_rf_3cls_wrist_full,
+                y_pred_cnn_3cls_wrist_full,
+                class_names,
+                notation=notation_w
+            )
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_wrist_3_cls,
+                y_pred_trans_3cls_wrist_full,
+                y_pred_lstm_3cls_wrist_full,
+                class_names,
+                notation=notation_w
+            )
+
+            # Model fusion
+            zero_matrx =np.zeros_like(y_pred_multi_cnn_chest_3cls_hrv_eda)
             model_names = ['Multi CNN 3', 'Multi LSTM', 'Chest RF Full', 'Wrist RF Full']
             plot_subject_confusion_matrices(
                 sub_id,
                 y_test_sub_chest_3_cls,
-                y_pred_multi_cnn_3_chest_3cls_hrv_eda,
+                y_pred_multi_cnn_chest_3cls_hrv_eda,
                 y_pred_lstm_multi_chest_3cls_hrv_eda,
                 y_pred_multi_rf_chest_3cls_hrv_eda,
-                y_pred_multi_rf_chest_3cls_hrv_eda,
+                zero_matrx,
                 class_names,
                 model_names
             )
@@ -523,29 +639,51 @@ def main():
     print(df_results_2cls_chest_full.to_string(index=False))
     if not df_results_2cls_chest_full.empty:
         print(f"\nAverage Accuracy on Test Set ({len(TEST_SUBJECTS)} subjects):")
-        print(f"RF:  {df_results_2cls_chest_full['acc_rf'].mean():.2f}")
-        print(f"CNN: {df_results_2cls_chest_full['acc_cnn'].mean():.2f}")
+        print(f"Normal RF 2 cls:  {df_results_2cls_chest_full['acc_rf'].mean():.2f}")
+        print(f"Multi CNN 2 cls: {df_results_2cls_chest_full['acc_cnn'].mean():.2f}")
 
     print("\n=== CHEST - HRV EDA ===")
     print(df_results_2cls_chest_hrv_eda.to_string(index=False))
     if not df_results_2cls_chest_hrv_eda.empty:
         print(f"\nAverage Accuracy on Test Set ({len(TEST_SUBJECTS)} subjects):")
-        print(f"RF:  {df_results_2cls_chest_hrv_eda['acc_rf'].mean():.2f}")
-        print(f"CNN: {df_results_2cls_chest_hrv_eda['acc_cnn'].mean():.2f}")
+        print(f"Normal RF 2 cls:  {df_results_2cls_chest_hrv_eda['acc_rf'].mean():.2f}")
+        print(f"Normal CNN 2 cls: {df_results_2cls_chest_hrv_eda['acc_cnn'].mean():.2f}")
 
     print("\n=== WRIST - FULL ===")
     print(df_results_2cls_wrist_full.to_string(index=False))
     if not df_results_2cls_wrist_full.empty:
         print(f"\nAverage Accuracy on Test Set ({len(TEST_SUBJECTS)} subjects):")
-        print(f"RF:  {df_results_2cls_wrist_full['acc_rf'].mean():.2f}")
-        print(f"LSTM: {df_results_2cls_wrist_full['acc_lstm'].mean():.2f}")
+        print(f"Multi RF 2 cls:  {df_results_2cls_wrist_full['acc_rf'].mean():.2f}")
+        print(f"Normal LSTM 2 cls: {df_results_2cls_wrist_full['acc_lstm'].mean():.2f}")
 
-    # Mega Fusion
+    # Final per dataset fusion
+    df_results_fdf_chest_full = pd.DataFrame(results_fdf_chest_full)
+    df_results_fdf_chest_hrv_eda = pd.DataFrame(results_fdf_chest_hrv_eda)
+    df_results_fdf_wrist = pd.DataFrame(results_fdf_wrist)
 
-    # print(f"Multi RF: {df_results['acc_multi_rf'].mean():.2f}")
-    # print(f"RF 2 classes: {df_results['acc_rf_2_cls'].mean():.2f}")
+    print("\n=== CHEST - FULL ===")
+    print(df_results_fdf_chest_full.to_string(index=False))
+    if not df_results_fdf_chest_full.empty:
+        print(f"\nAverage Accuracy on Test Set ({len(TEST_SUBJECTS)} subjects):")
+        print(f"Normal RF + Multi CNN:  {df_results_fdf_chest_full['max_acc'].mean():.2f}")
+        print(f"Normal RF + 2cls RF : {df_results_fdf_chest_full['class_combo'].mean():.2f}")
+        print(f"normal CNN + 2cls CNN: {df_results_fdf_chest_full['dl_var'].mean():.2f}")
 
+    print("\n=== CHEST - HRV EDA ===")
+    print(df_results_fdf_chest_hrv_eda.to_string(index=False))
+    if not df_results_fdf_chest_hrv_eda.empty:
+        print(f"\nAverage Accuracy on Test Set ({len(TEST_SUBJECTS)} subjects):")
+        print(f"Normal RF + Multi CNN:  {df_results_fdf_chest_hrv_eda['max_acc'].mean():.2f}")
+        print(f"Normal RF + 2cls RF: {df_results_fdf_chest_hrv_eda['class_combo'].mean():.2f}")
+        print(f"Normal CNN + 2cls CNN: {df_results_fdf_chest_hrv_eda['dl_var'].mean():.2f}")
 
+    print("\n=== WRIST - FULL ===")
+    print(df_results_fdf_wrist.to_string(index=False))
+    if not df_results_fdf_wrist.empty:
+        print(f"\nAverage Accuracy on Test Set ({len(TEST_SUBJECTS)} subjects):")
+        print(f"Normal LSTM + Multi RF:  {df_results_fdf_wrist['max_acc'].mean():.2f}")
+        print(f"Multi RF + 2 cls multi RF: {df_results_fdf_wrist['class_combo'].mean():.2f}")
+        print(f"Normal LSTM + DecFusion LSTM: {df_results_fdf_wrist['dl_var'].mean():.2f}")
 
 
 if __name__ == "__main__":

@@ -104,8 +104,9 @@ def predict_model(model, X_test, y_test, model_name):
     # 1. Predicție Random Forest
     if model_name == 'RF':
         y_pred = model.predict(X_test)
+        raw_preds = model.predict_proba(X_test)
         acc = accuracy_score(y_test, y_pred)
-        raw_preds = y_pred
+
 
     # 3. Predicție Deep Learning Standard (Single-Branch)
     elif model_name in ['CNN', 'TRANS', 'LSTM']:
@@ -382,6 +383,24 @@ def predict_multi_rf_independent_branches(models_list, X_list, y_list):
 
 def combine_results_multiple_models(list_raw_preds, y_list):
     raws_avg = sum(list_raw_preds)/len(list_raw_preds)
+    preds = np.argmax(raws_avg, axis=1)
+    y_intermediary = np.asarray(y_list)
+    print(f"{y_intermediary.shape} - {len(y_intermediary.shape)}")
+    y_test = y_list if len(y_intermediary.shape) == 1 else y_list[0]
+    print(f"Y Test: {y_test}")
+    print(f"Y List: {y_list}")
+    acc = accuracy_score(y_test, preds)
+
+    return acc, preds, raws_avg
+
+def combine_results_single_3cls_plus_2cls(preds_3cls, preds_2cls, y_list):
+    raw_3cls = np.asarray(preds_3cls)
+    raw_2cls =  np.asarray(preds_2cls)
+    positive_rating = preds_2cls[:, 0:1]
+    negative_rating = preds_2cls[:, 1:2]
+    raw_3cls[:, [0,2] ] += positive_rating
+    raw_3cls[:, [1] ] += negative_rating
+    raws_avg = raw_3cls/2
     preds = np.argmax(raws_avg, axis=1)
     y_intermediary = np.asarray(y_list)
     print(f"{y_intermediary.shape} - {len(y_intermediary.shape)}")
