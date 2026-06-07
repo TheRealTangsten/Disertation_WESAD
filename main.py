@@ -11,13 +11,13 @@ import plotting as plting
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import confusion_matrix
 
-# Importurile tale specifice proiectului
+
 import constants as cnst
 import data_loading as dataLoading
-import single_model_utils as smu  # Utilitarele cu noile funcții mecanice
+import single_model_utils as smu
 
 
-# 1. Setări de determinism global (pentru reproductibilitate)
+
 def set_global_determinism(seed=42):
     os.environ['PYTHONHASHSEED'] = str(seed)
     os.environ['TF_DETERMINISTIC_OPS'] = '1'
@@ -29,7 +29,7 @@ def set_global_determinism(seed=42):
 
 set_global_determinism(42)
 
-# 2. Configurații și constante
+
 DATA_PATH = cnst.path_data
 ALL_SUBJECTS = ['S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S13', 'S14', 'S15', 'S16', 'S17']
 TEST_SUBJECTS = ['S15', 'S16', 'S17']
@@ -40,7 +40,7 @@ notation_cf = "Chest - HRV, EDA, RESP"
 notation_che = "Chest - HRV, EDA"
 notation_w = "Wrist - HRV, EDA"
 
-# Funcția grafică păstrată din scriptul original
+
 def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y_pred_trans, y_pred_lstm, classes, model_names = ['Random Forest', 'CNN', 'Transformer', 'LSTM']):
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
     fig.suptitle(f'Confusion Matrices for Subject {subject_id}', fontsize=16)

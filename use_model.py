@@ -55,7 +55,6 @@ def train_all_models_once(X_train, y_train, num_classes):
     trans_model.fit(train_dataset, epochs=20, verbose=0)
     #trans_model.fit(train_dataset, epochs=20, verbose=0, class_weight=class_weights_dict)
 
-    # Adăugăm antrenarea LSTM
     print("  -> Training LSTM...")
     lstm_m = lstm.build_lstm_model((X_train.shape[1], 1), num_classes)
     lstm_m.fit(train_dataset, epochs=20, verbose=0)

@@ -24,7 +24,7 @@ def build_transformer_model(input_shape, num_classes):
     outputs = Dense(num_classes, activation="softmax")(x)
     model = Model(inputs=inputs, outputs=outputs)
 
-    optimizer = Adam(learning_rate=0.0001)  # Default e 0.001, incercam de 10x mai mic
+    optimizer = Adam(learning_rate=0.0001)  # 0.001
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
     #model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     return model
