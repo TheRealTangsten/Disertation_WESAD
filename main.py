@@ -233,7 +233,7 @@ def main():
         xxt3_chest_hrv_eda, yyt3_chest_hrv_eda, _ = dataLoading.provide_test_data_concat(sub_id, option="chest",hrv=True, eda=True, resp=False)
         acc_multi_cnn_chest_3cls_hrv_eda, y_pred_multi_cnn_chest_3cls_hrv_eda, raw_pred_multi_cnn_3cls_chest_hrv_eda = smu.predict_multi_branch_by_vector_count(
             multi_CNN_3cls_chest_hrv_eda, xxt3_chest_hrv_eda, yyt3_chest_hrv_eda)
-        acc_multi_lstm_chest_3cls_hrv_eda, y_pred_lstm_multi_chest_3cls_hrv_eda, raw_pred_lstm_multi_chest_3cls_hrv_eda = smu.predict_multi_branch_lstm_by_vector_count(
+        acc_multi_lstm_chest_3cls_hrv_eda, y_pred_multi_lstm_chest_3cls_hrv_eda, raw_pred_lstm_multi_chest_3cls_hrv_eda = smu.predict_multi_branch_lstm_by_vector_count(
             multi_LSTM_3cls_chest_hrv_eda, xxt3_chest_hrv_eda, yyt3_chest_hrv_eda)
         # RF specializat RESPIBAN - hrv/eda - 3 cls
         acc_multi_rf_chest_3cls_hrv_eda, y_pred_multi_rf_chest_3cls_hrv_eda, _ = smu.predict_multi_rf_independent_branches(
@@ -241,7 +241,7 @@ def main():
 
         #CNN, LSTM specializat Empatica E4 - Full - 3 cls
         xxt3_wrist_full, yyt3_wrist_full, _ = dataLoading.provide_test_data_concat(sub_id, option="wrist", hrv=True,eda=True, resp=False)
-        acc_multi_cnn_wrist_3cls_full, y_pred_multi_cnn_3_wrist_3cls_full, _ = smu.predict_multi_branch_by_vector_count(multi_CNN_3cls_wrist_full,xxt3_wrist_full,yyt3_wrist_full)
+        acc_multi_cnn_wrist_3cls_full, y_pred_multi_cnn_wrist_3cls_full, _ = smu.predict_multi_branch_by_vector_count(multi_CNN_3cls_wrist_full,xxt3_wrist_full,yyt3_wrist_full)
         acc_multi_lstm_wrist_3cls_full, y_pred_multi_lstm_wrist_3cls_full, _ = smu.predict_multi_branch_lstm_by_vector_count(multi_LSTM_3cls_wrist_full, xxt3_wrist_full, yyt3_wrist_full)
 
         # RF specializat Empatica E4 - Full - 3 cls
@@ -268,7 +268,7 @@ def main():
         list_raw_preds_onesig_LSTM_chest_full = [raw_pred_LSTM_chest_hrv, raw_pred_LSTM_chest_eda, raw_pred_LSTM_chest_resp]
         list_raw_preds_onesig_LSTM_chest_eda_hrv = [raw_pred_LSTM_chest_hrv, raw_pred_LSTM_chest_eda]
         acc_onesig_LSTM_chest_full, y_pred_onesig_LSTM_chest_full, _ = smu.combine_results_multiple_models(list_raw_preds_onesig_LSTM_chest_full, yyt3_chest_hrv)
-        acc_onesig_LSTM_chest_eda_hrv, y_pred_onesig_LSTM_chest_eda_hrv, _ = smu.combine_results_multiple_models(list_raw_preds_onesig_LSTM_chest_eda_hrv, yyt3_chest_hrv)
+        acc_onesig_LSTM_chest_eda_hrv, y_pred_onesig_LSTM_chest_hrv_eda, _ = smu.combine_results_multiple_models(list_raw_preds_onesig_LSTM_chest_eda_hrv, yyt3_chest_hrv)
 
         #onesig CNN - wrist
         xxt3_wrist_hrv, yyt3_wrist_hrv = dataLoading.provide_test_data_fused(sub_id, option="wrist", hrv=True, eda=False)
@@ -456,21 +456,24 @@ def main():
         else:
             # normal models
             #chest - full
-
+            model_names_1 = ["RF", "CNN"]
             plting.plot_subject_confusion_matrices_2col(
                 sub_id,
                 y_test_sub_chest_3_cls,
                 y_pred_rf_3cls_chest_full,
                 y_pred_cnn_3cls_chest_full,
                 class_names,
+                model_names=model_names_1,
                 notation=notation_cf
             )
+            model_names_2 = ["Transformer", "LSTM"]
             plting.plot_subject_confusion_matrices_2col(
                 sub_id,
                 y_test_sub_chest_3_cls,
                 y_pred_trans_3cls_chest_full,
                 y_pred_lstm_3cls_chest_full,
                 class_names,
+                model_names=model_names_2,
                 notation=notation_cf
             )
             #chest - hrv eda
@@ -481,6 +484,7 @@ def main():
                 y_pred_rf_3cls_chest_hrv_eda,
                 y_pred_cnn_3cls_chest_hrv_eda,
                 class_names,
+                model_names=model_names_1,
                 notation=notation_che
             )
             plting.plot_subject_confusion_matrices_2col(
@@ -489,6 +493,7 @@ def main():
                 y_pred_trans_3cls_chest_hrv_eda,
                 y_pred_lstm_3cls_chest_hrv_eda,
                 class_names,
+                model_names=model_names_2,
                 notation=notation_che
             )
             #wrist
@@ -498,6 +503,7 @@ def main():
                 y_pred_rf_3cls_wrist_full,
                 y_pred_cnn_3cls_wrist_full,
                 class_names,
+                model_names=model_names_1,
                 notation=notation_w
             )
             plting.plot_subject_confusion_matrices_2col(
@@ -506,41 +512,205 @@ def main():
                 y_pred_trans_3cls_wrist_full,
                 y_pred_lstm_3cls_wrist_full,
                 class_names,
+                model_names=model_names_2,
                 notation=notation_w
             )
 
             # Model fusion
-            zero_matrx =np.zeros_like(y_pred_multi_cnn_chest_3cls_hrv_eda)
-            model_names = ['Multi CNN 3', 'Multi LSTM', 'Chest RF Full', 'Wrist RF Full']
-            plot_subject_confusion_matrices(
+
+            #Chest - full
+            model_names = ['Multi CNN', 'Multi LSTM']
+            plting.plot_subject_confusion_matrices_2col(
                 sub_id,
                 y_test_sub_chest_3_cls,
                 y_pred_multi_cnn_chest_3cls_hrv_eda,
-                y_pred_lstm_multi_chest_3cls_hrv_eda,
-                y_pred_multi_rf_chest_3cls_hrv_eda,
-                zero_matrx,
+                y_pred_multi_lstm_chest_3cls_hrv_eda,
                 class_names,
-                model_names
+                model_names=model_names,
+                notation=notation_cf
+            )
+            #Chest - hrv/eda
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_chest_hrv_eda_3_cls,
+                y_pred_multi_cnn_chest_3cls_hrv_eda,
+                y_pred_multi_lstm_chest_3cls_hrv_eda,
+                class_names,
+                model_names=model_names,
+                notation=notation_che
             )
 
-            model_names = ['Wrist RF Full', 'Wrist RF Full', 'Wrist RF Full', 'Wrist RF Full']
-            plot_subject_confusion_matrices(
+            #Wrist - full
+            plting.plot_subject_confusion_matrices_2col(
                 sub_id,
                 y_test_sub_wrist_3_cls,
-                y_pred_multi_rf_3cls_wrist_full,
-                y_pred_multi_rf_3cls_wrist_full,
-                y_pred_multi_rf_3cls_wrist_full,
-                y_pred_multi_rf_3cls_wrist_full,
+                y_pred_multi_cnn_wrist_3cls_full,
+                y_pred_multi_lstm_wrist_3cls_full,
                 class_names,
-                model_names
+                model_names=model_names,
+                notation=notation_w
+            )
+
+            # Decision Fusion
+
+            model_names = ["DecFusion CNN", "DecFusion LSTM"]
+            model_name = "Multi RF"
+            #Chest - Full
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_chest_3_cls,
+                y_pred_onesig_CNN_chest_full,
+                y_pred_onesig_LSTM_chest_full,
+                class_names,
+                model_names=model_names,
+                notation=notation_cf
             )
             plting.plot_sub_conf_mat(
                 sub_id,
-                y_test_sub_2_cls,
-                y_pred_rf_2_cls_hrv_eda,
-                class_names_binary,
-                model_name='RF 2 Classes'
+                y_test_sub_chest_3_cls,
+                y_pred_multi_rf_chest_3cls_full,
+                class_names,
+                model_name=model_name,
+                notation=notation_cf
             )
+            #Chest - hrv/eda
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_chest_hrv_eda_3_cls,
+                y_pred_onesig_CNN_chest_hrv_eda,
+                y_pred_onesig_LSTM_chest_hrv_eda,
+                class_names,
+                model_names=model_names,
+                notation=notation_che
+            )
+            plting.plot_sub_conf_mat(
+                sub_id,
+                y_test_sub_chest_hrv_eda_3_cls,
+                y_pred_multi_rf_chest_3cls_hrv_eda,
+                class_names,
+                model_name=model_name,
+                notation=notation_che
+            )
+            #Wrist - Full
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_wrist_3_cls,
+                y_pred_onesig_CNN_wrist,
+                y_pred_onesig_LSTM_wrist,
+                class_names,
+                model_names=model_names,
+                notation=notation_w
+            )
+            plting.plot_sub_conf_mat(
+                sub_id,
+                y_test_sub_wrist_3_cls,
+                y_pred_multi_rf_3cls_wrist_full,
+                class_names,
+                model_name=model_name,
+                notation=notation_w
+            )
+
+            #2 classes
+
+            # Chest - Full
+            model_names = ["RF", "Multi CNN"]
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_chest_2_cls,
+                y_pred_RF_2cls_chest_full,
+                y_pred_multi_CNN_2cls_chest_full,
+                class_names,
+                model_names=model_names,
+                notation=notation_cf
+            )
+            # Chest - Hrv/Eda
+            model_names = ["RF", "Normal CNN"]
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_chest_2_cls,
+                y_pred_RF_2cls_chest_hrv_eda,
+                y_pred_CNN_2cls_chest_hrv_eda,
+                class_names,
+                model_names=model_names,
+                notation=notation_che
+            )
+            # Wrist
+            model_names = ["Multi RF", "Normal LSTM"]
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_wrist_2_cls,
+                y_pred_multi_RF_2cls_wrist_full,
+                y_pred_LSTM_2cls_wrist_full,
+                class_names,
+                model_names=model_names,
+                notation=notation_w
+            )
+
+            # Final Per Data Fusion
+
+            # Chest - Full
+            model_names = ["Normal RF + Multi CNN", "Normal RF + 2cls RF"]
+            model_name = "normal CNN + 2cls CNN"
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_chest_3_cls,
+                y_pred_max_acc_chest_full,
+                y_pred_class_combo_chest_full,
+                class_names,
+                model_names=model_names,
+                notation=notation_cf
+            )
+            plting.plot_sub_conf_mat(
+                sub_id,
+                y_test_sub_chest_3_cls,
+                y_pred_dl_var_chest_full,
+                class_names,
+                model_name=model_name,
+                notation=notation_cf
+            )
+            # Chest - Hrv/eda
+            model_names = ["Normal RF + Multi CNN", "Normal RF + 2cls RF"]
+            model_name = "normal CNN + 2cls CNN"
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_chest_3_cls,
+                y_pred_max_acc_chest_hrv_eda,
+                y_pred_class_combo_chest_hrv_eda,
+                class_names,
+                model_names=model_names,
+                notation=notation_che
+            )
+            plting.plot_sub_conf_mat(
+                sub_id,
+                y_test_sub_chest_3_cls,
+                y_pred_dl_var_chest_hrv_eda,
+                class_names,
+                model_name=model_name,
+                notation=notation_che
+            )
+
+            # Wrist
+            model_names = ["Normal LSTM + Multi RF", "Multi RF + 2cls multi RF"]
+            model_name = "Normal LSTM + DecFusion LSTM "
+            plting.plot_subject_confusion_matrices_2col(
+                sub_id,
+                y_test_sub_wrist_3_cls,
+                y_pred_max_acc_wrist,
+                y_pred_class_combo_wrist,
+                class_names,
+                model_names=model_names,
+                notation=notation_w
+            )
+            plting.plot_sub_conf_mat(
+                sub_id,
+                y_test_sub_wrist_3_cls,
+                y_pred_dl_var_wrist,
+                class_names,
+                model_name=model_name,
+                notation=notation_w
+            )
+
+
     ###########  --------------- ###################### ---------------  ###########
 
     # --- AFISARE TABELE PER SUBIECT ---
@@ -616,6 +786,7 @@ def main():
     df_results_decision_fusion = pd.DataFrame(results_decision_fusion)
     df_results_decision_fusion_2 = pd.DataFrame(results_decision_fusion_2)
 
+    print(df_results_decision_fusion.to_string(index=False))
     if not df_results_decision_fusion.empty:
         print(f"\nAverage Accuracy on Test Set ({len(TEST_SUBJECTS)} subjects):")
         print(f"CNN chest full: {df_results_decision_fusion['acc_CNN_chest_full'].mean():.2f}")
@@ -623,6 +794,7 @@ def main():
         print(f"LSTM chest full: {df_results_decision_fusion['acc_LSTM_chest_full'].mean():.2f}")
         print(f"LSTM chest hrv/eda: {df_results_decision_fusion['acc_LSTM_chest_hrv_eda'].mean():.2f}")
 
+    print(df_results_decision_fusion_2.to_string(index=False))
     if not df_results_decision_fusion_2.empty:
         print(f"\nAverage Accuracy on Test Set ({len(TEST_SUBJECTS)} subjects):")
         print(f"CNN wrist: {df_results_decision_fusion_2['acc_CNN_wrist'].mean():.2f}")
