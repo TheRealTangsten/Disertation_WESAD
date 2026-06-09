@@ -63,6 +63,7 @@ def plot_subject_confusion_matrices(subject_id, y_true, y_pred_rf, y_pred_cnn, y
 
 
 def main():
+    #dataLoading.preprocess_and_save_to_json(ALL_SUBJECTS)
     print("Loading preprocessed data from JSON...")
     num_classes_3 = 3
     num_classes_2 = 2
